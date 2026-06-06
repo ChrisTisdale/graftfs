@@ -19,6 +19,7 @@
 use grep::pcre2::{RegexMatcher, RegexMatcherBuilder};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
+use std::rc::Rc;
 use tracing::{debug, instrument, trace, warn};
 
 #[derive(Clone, Default)]
@@ -36,7 +37,7 @@ impl Debug for StowFilter {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct StowOptions {
     pub(crate) filter: StowFilter,
     pub(crate) dot_file_prefix: Option<String>,
@@ -47,7 +48,7 @@ pub struct StowOptions {
 pub struct StowData {
     pub(crate) target: PathBuf,
     pub(crate) directory: PathBuf,
-    pub(crate) options: StowOptions,
+    pub(crate) options: Rc<StowOptions>,
 }
 
 impl StowOptions {
@@ -91,7 +92,7 @@ impl StowData {
         Self {
             target,
             directory,
-            options,
+            options: Rc::new(options),
         }
     }
 
@@ -100,7 +101,7 @@ impl StowData {
         Self {
             target,
             directory: self.directory.clone(),
-            options: self.options.clone(),
+            options: Rc::clone(&self.options),
         }
     }
 }

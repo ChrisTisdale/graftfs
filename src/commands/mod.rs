@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+mod color_support;
 mod command;
 mod command_build_error;
 mod command_builder;
@@ -26,6 +27,7 @@ mod restow_data;
 mod stow_data;
 mod unstow_data;
 
+pub use color_support::ColorSupport;
 pub use command::Command;
 pub use command_build_error::CommandBuildError;
 pub use command_builder::CommandBuilder;

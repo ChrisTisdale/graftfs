@@ -366,17 +366,18 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
+        let item = item.canonicalize()?;
         if operation.is_symlink(full_path) && operation.read_link(full_path)? == item {
             info!("Skipping existing symlink: {}", full_path.display());
             Ok(())
-        } else if operation.is_directory(item) && operation.is_directory(full_path) {
+        } else if operation.is_directory(&item) && operation.is_directory(full_path) {
             info!(
                 "Directory already exists traversing its children.  Stowing children of: {}",
                 full_path.display()
             );
 
             Self::process_directory_entry(
-                item,
+                &item,
                 &args.clone_with_target(full_path.to_path_buf()),
                 operation,
             )?;
@@ -385,7 +386,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         } else if Self::should_override(full_path, &args.options.filter) && operation.is_file(full_path) {
             info!("Overriding existing file: {}", full_path.display());
             operation.remove_item(full_path)?;
-            operation.link_item(item, full_path)?;
+            operation.link_item(&item, full_path)?;
 
             Ok(())
         } else {
@@ -427,15 +428,16 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn unstow_item(item: &Path, args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
-        let item_name = Self::get_item_name(item, args.dot_file_prefix.as_ref())?;
+        let item = item.canonicalize()?;
+        let item_name = Self::get_item_name(&item, args.dot_file_prefix.as_ref())?;
         let full_path = args.target.join(item_name);
 
         if operation.is_symlink(&full_path) && operation.read_link(&full_path).is_ok_and(|p| p == item) {
             info!("Removing symlink: {}", full_path.display());
             operation.remove_link(&full_path)?;
             Self::cleanup_empty_parent(&full_path, &args.target, operation)?;
-        } else if operation.is_directory(&full_path) && operation.is_directory(item) {
-            Self::unstow_directory_entry(item, &args.clone_with_target(full_path.clone()), operation)?;
+        } else if operation.is_directory(&full_path) && operation.is_directory(&item) {
+            Self::unstow_directory_entry(&item, &args.clone_with_target(full_path.clone()), operation)?;
 
             if operation.is_directory(&full_path)
                 && operation
@@ -456,15 +458,16 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn list_item(item: &Path, args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
-        let item_name = Self::get_item_name(item, args.dot_file_prefix.as_ref())?;
+        let item = item.canonicalize().map_err(CommandError::from)?;
+        let item_name = Self::get_item_name(&item, args.dot_file_prefix.as_ref())?;
         let full_path = args.target.join(item_name);
 
         if operation.is_symlink(&full_path) && operation.read_link(&full_path).is_ok_and(|p| p == item) {
             debug!("Found symlink: {}", full_path.display());
-            println!("LINK: {} => {}", item.display(), full_path.display());
-        } else if operation.is_directory(&full_path) && operation.is_directory(item) {
+            args.color_support.print_list_text(&item, &full_path);
+        } else if operation.is_directory(&full_path) && operation.is_directory(&item) {
             debug!("Found directory: {}", full_path.display());
-            Self::list_directory_entry(item, &args.clone_with_target(full_path), operation)?;
+            Self::list_directory_entry(&item, &args.clone_with_target(full_path), operation)?;
         }
 
         Ok(())

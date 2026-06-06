@@ -19,8 +19,8 @@
 use crate::commands::command::CommandData;
 use crate::commands::command_operation::SimulatedData;
 use crate::commands::{
-    Command, CommandBuildError, CommandOperation, CommandOperationImpl, DirectoryReader, ListData, RestowData,
-    StowData, StowOptions, UnstowData,
+    ColorSupport, Command, CommandBuildError, CommandOperation, CommandOperationImpl, DirectoryReader, ListData,
+    RestowData, StowData, StowOptions, UnstowData,
 };
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -70,6 +70,7 @@ pub struct RestowCommandBuilder<T: CommandOperation<DirectoryReader>> {
 #[derive(Default)]
 pub struct ListCommandBuilder<T: CommandOperation<DirectoryReader>> {
     builder: CommandBuilder<T>,
+    color_support: ColorSupport,
 }
 
 #[allow(unused)]
@@ -105,11 +106,11 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
     ///
     /// In simulated mode, filesystem changes are reported rather than applied.
     #[must_use]
-    pub fn simulate(self) -> CommandBuilder<CommandOperationImpl> {
+    pub fn simulate(self, color_support: ColorSupport) -> CommandBuilder<CommandOperationImpl> {
         CommandBuilder::<CommandOperationImpl> {
             target: self.target,
             directory: self.directory,
-            operation: CommandOperationImpl::Simulated(SimulatedData::default()),
+            operation: CommandOperationImpl::Simulated(SimulatedData::default().with_color_support(color_support)),
             dot_file_prefix: self.dot_file_prefix,
         }
     }
@@ -153,7 +154,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
     /// Converts this builder into a list-command builder.
     #[must_use]
     pub const fn list(self) -> ListCommandBuilder<T> {
-        ListCommandBuilder { builder: self }
+        ListCommandBuilder {
+            builder: self,
+            color_support: ColorSupport::None,
+        }
     }
 }
 
@@ -181,9 +185,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
 
     /// Switches the unstow command into simulated execution mode.
     #[must_use]
-    pub fn simulate(self) -> UnstowCommandBuilder<CommandOperationImpl> {
+    pub fn simulate(self, color_support: ColorSupport) -> UnstowCommandBuilder<CommandOperationImpl> {
         UnstowCommandBuilder::<CommandOperationImpl> {
-            builder: self.builder.simulate(),
+            builder: self.builder.simulate(color_support),
         }
     }
 
@@ -318,9 +322,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
 
     /// Switches the stow command into simulated execution mode.
     #[must_use]
-    pub fn simulate(self) -> StowCommandBuilder<CommandOperationImpl> {
+    pub fn simulate(self, color_support: ColorSupport) -> StowCommandBuilder<CommandOperationImpl> {
         StowCommandBuilder::<CommandOperationImpl> {
-            builder: self.builder.simulate(),
+            builder: self.builder.simulate(color_support),
             ignored: self.ignored,
             overrides: HashSet::new(),
             no_folding: self.no_folding,
@@ -457,9 +461,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
 
     /// Switches the restow command into simulated execution mode.
     #[must_use]
-    pub fn simulate(self) -> RestowCommandBuilder<CommandOperationImpl> {
+    pub fn simulate(self, color_support: ColorSupport) -> RestowCommandBuilder<CommandOperationImpl> {
         RestowCommandBuilder::<CommandOperationImpl> {
-            stow_command: self.stow_command.simulate(),
+            stow_command: self.stow_command.simulate(color_support),
         }
     }
 
@@ -542,35 +546,36 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
 
 #[allow(unused)]
 impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
-    /// Creates a new unstow command builder with default settings.
+    /// Creates a new list command builder with default settings.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Sets the target directory for the unstow command.
+    /// Sets the target directory for the list command.
     #[must_use]
     pub fn with_target(mut self, target: PathBuf) -> Self {
         self.builder = self.builder.with_target(target);
         self
     }
 
-    /// Sets the stowed directory for the unstow command.
+    /// Sets the stowed directory for the list command.
     #[must_use]
     pub fn with_directory(mut self, directory: PathBuf) -> Self {
         self.builder = self.builder.with_directory(directory);
         self
     }
 
-    /// Switches the unstow command into simulated execution mode.
+    /// Switches the list command into simulated execution mode.
     #[must_use]
-    pub fn simulate(self) -> UnstowCommandBuilder<CommandOperationImpl> {
-        UnstowCommandBuilder::<CommandOperationImpl> {
-            builder: self.builder.simulate(),
+    pub fn simulate(self, color_support: ColorSupport) -> ListCommandBuilder<CommandOperationImpl> {
+        ListCommandBuilder::<CommandOperationImpl> {
+            builder: self.builder.simulate(color_support),
+            color_support: self.color_support,
         }
     }
 
-    /// Switches the unstow command into normal execution mode.
+    /// Switches the list command into normal execution mode.
     #[must_use]
     pub fn command(self) -> UnstowCommandBuilder<CommandOperationImpl> {
         UnstowCommandBuilder::<CommandOperationImpl> {
@@ -578,21 +583,28 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
         }
     }
 
-    /// Sets the dot file prefix for the unstow command.
+    /// Sets the dot file prefix for the list command.
     #[must_use]
     pub fn with_dot_file_prefix(mut self, prefix: Option<String>) -> Self {
         self.builder = self.builder.with_dot_file_prefix(prefix);
         self
     }
 
-    /// Builds the unstow command with the provided configuration.
+    /// Sets the color support for the list command.
+    #[must_use]
+    pub const fn with_color_support(mut self, color_support: ColorSupport) -> Self {
+        self.color_support = color_support;
+        self
+    }
+
+    /// Builds the list command with the provided configuration.
     ///
     /// Returns a `Result` containing the constructed `Command` if successful, or a `CommandBuildError` if any required configuration is missing.
     ///
     /// # Errors
     ///
-    /// `CommandBuildError::MissingTargetDirectory`: Indicates that the target directory for unstow operation is missing.
-    /// `CommandBuildError::MissingStowDirectory`: Indicates that the stowed directory for unstow operation is missing.
+    /// `CommandBuildError::MissingTargetDirectory`: Indicates that the target directory for list operation is missing.
+    /// `CommandBuildError::MissingStowDirectory`: Indicates that the stowed directory for list operation is missing.
     ///
     /// # Examples
     ///
@@ -626,7 +638,13 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
             .directory
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
 
-        let data = ListData::new(target, directory, self.builder.dot_file_prefix);
+        let data = ListData::new(
+            target,
+            directory,
+            self.builder.dot_file_prefix,
+            self.color_support,
+        );
+
         Ok(Command::List(CommandData {
             data,
             operation: self.builder.operation,

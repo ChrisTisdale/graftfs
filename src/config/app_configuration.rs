@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::commands::ColorSupport;
 use crate::config::logging_config::LoggingFormat;
 use crate::config::{Config, ConfigError, LoggingError};
 use std::collections::HashSet;
@@ -57,6 +58,7 @@ const DEFAULT_IGNORE: &[&str] = &[
     "^/.DS_Store",
 ];
 
+#[derive(Debug)]
 pub struct AppConfiguration {
     config: Config,
     pub ignored: HashSet<String>,
@@ -96,7 +98,7 @@ impl AppConfiguration {
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
-    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new())?;
+    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
     ///     Ok(())
     /// }
     /// ```
@@ -105,6 +107,7 @@ impl AppConfiguration {
         search_path: &Path,
         mut ignored: HashSet<String>,
         mut overrides: HashSet<String>,
+        no_color: bool,
     ) -> Result<Self, ConfigError> {
         let mut config = Config::from_file(config_file)?;
         if config.ignored.file.is_relative() {
@@ -117,6 +120,7 @@ impl AppConfiguration {
             config.logging.logging_path = Some(search_path.join(logging_path));
         }
 
+        config.logging.color_support = !no_color && config.logging.color_support;
         ignored.extend(Self::read_ignore_file(&config, config_file)?);
         overrides.extend(Self::read_override_file(&config)?);
         Ok(Self {
@@ -148,7 +152,7 @@ impl AppConfiguration {
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
-    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new())?;
+    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
     ///     configuration.setup_logger(None, None)?;
     ///     Ok(())
     /// }
@@ -174,6 +178,14 @@ impl AppConfiguration {
                 || self.set_console_logger(config_level, config_format),
                 |(appender, guard)| Self::set_file_logger(config_level, config_format, appender, guard),
             )
+    }
+
+    pub fn color_support(&self) -> ColorSupport {
+        if self.config.color.enabled && supports_color::on(Stream::Stdout).is_some() {
+            ColorSupport::Colored(self.config.color.settings.clone())
+        } else {
+            ColorSupport::None
+        }
     }
 
     fn set_file_logger(

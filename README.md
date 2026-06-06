@@ -20,6 +20,7 @@ locations (e.g., in your home directory).
 - **Ignore/Override**: Regex-based ignore and override patterns.
 - **Customizable**: Configurable via TOML and ignore files.
 - **Cross-Platform**: Supports Windows, macOS, and Linux.
+- **Color Support**: Supports ANSI color codes for better readability.
 
 ## Setup
 
@@ -90,14 +91,25 @@ logging_path = "path/to/logs"
 rotation = "Daily"
 max_log_files = 30
 color_support = true
+
+[color]
+enabled = true
+link = "Green"
+unlink = "Red"
+list = "Cyan"
+remove = "Red"
+create = "Green"
+arrow = "Blue"
+source = "Yellow"
+target = "Magenta"
 ```
 
 ### Version 1 Configuration Options
 
 #### Ignored
 
-- `file`: The name of the ignore file (default: `.graft-ignore`)
-- `comment`: The comment character used in the ignore file (default: '#')
+- `file`: The name of the ignored file (default: `.graft-ignore`)
+- `comment`: The comment character used in the ignored file (default: '#')
 
 #### Overrides
 
@@ -107,11 +119,31 @@ color_support = true
 #### Logging
 
 - `level`: The logging level (default: 'Warning')
-- `logging_path`: The path to the log file. When no file is provided the logging will output to sterr (default: None)
+- `logging_path`: The path to the log file. When no file is provided, the logging will output to sterr (default: None)
 - `rotation`: The log rotation mode (default: None)
 - `format`: The log format (default: 'Compact')
 - `max_log_files`: The maximum number of log files to keep (default: None)
 - `color_support`: Whether to enable color support in logs (default: True)
+
+#### Color
+
+- `enabled`: Whether to enable color support in logs (default: True)
+- `link`: The color of the link text (default: 'Green').
+  - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+- `unlink`: The color of the unlink text (default: 'Red').
+  - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
+- `list`: The color of the list text (default: 'Cyan')
+  - Colors can be specified as either a string (e.g., 'Cyan') or a hex code (e.g., '#00FFFF').
+- `remove`: The color of the remove text (default: 'Red')
+  - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
+- `create`: The color of the create text (default: 'Green')
+  - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+- `arrow`: The color of the arrow text (default: 'Blue')
+  - Colors can be specified as either a string (e.g., 'Blue') or a hex code (e.g., '#0000FF').
+- `source`: The color of the source text (default: 'Yellow')
+  - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
+- `target`: The color of the target text (default: 'Magenta')
+  - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
 
 ### Configuration Location
 
@@ -139,3 +171,12 @@ On Windows, the configuration files will be located in the following locations:
 
 By default, `graft` looks for a `.graft-ignore` file to determine which files should be skipped during stowing. This
 file supports regex patterns and comments starting with `#`.
+
+## Notes
+
+### Windows Support
+
+For Windows, graftfs will require either enabling developer mode or running as an administrator. This is because graftfs
+use symlinks which on Windows require admin privileges. For more information or how to not need admin access, see
+[here](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/create-symbolic-links).
+If you would like to enable developer mode, see [here](https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development)

@@ -175,6 +175,14 @@ struct GlobalArgs {
     )]
     config_file: Option<PathBuf>,
     #[arg(
+        long = "no-color",
+        global = true,
+        help = "Disable color output. This will prevent the application from using ANSI escape codes to format text and output.",
+        action = clap::ArgAction::SetTrue,
+        hide = true,
+    )]
+    no_color: bool,
+    #[arg(
         long = "dotfiles",
         global = true,
         help = "Enable special handling for dotfiles by automatically renaming files with a specific prefix. For example, using the default 'dot-' prefix, a file named 'dot-bashrc' will be stowed as '.bashrc' in the target directory.",
@@ -276,6 +284,7 @@ impl CommandLineProcessor {
             &directory,
             ignored,
             overrides,
+            global.no_color,
         )?;
 
         let guard = app_config.setup_logger(logging_args.log_level, logging_args.log_format)?;
@@ -292,7 +301,7 @@ impl CommandLineProcessor {
             .with_target(target);
 
         builder = if global.simulate {
-            builder.simulate()
+            builder.simulate(app_config.color_support())
         } else {
             builder.command()
         };
@@ -311,7 +320,10 @@ impl CommandLineProcessor {
                 .with_no_folding(stow_args.no_folding)
                 .with_overrides(app_config.overrides)
                 .build(),
-            ProcessCommands::List => builder.list().build(),
+            ProcessCommands::List => builder
+                .list()
+                .with_color_support(app_config.color_support())
+                .build(),
         }?;
 
         Ok(CliArgs::new(command, guard))
@@ -333,7 +345,7 @@ impl CommandLineProcessor {
     }
 
     fn get_default_target() -> Result<PathBuf, CliError> {
-        let current_dir = env::current_dir()?;
+        let current_dir = env::current_dir().and_then(|p| p.canonicalize())?;
         current_dir.parent().map_or_else(
             || Err(CliError::InvalidTargetDirectory),
             |p| Ok(p.to_path_buf()),

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::commands::CommandError;
+use crate::commands::{ColorSupport, CommandError};
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 use std::{fs, os};
@@ -335,30 +335,38 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     fn read_directory(&self, target: &Path) -> Result<T, CommandError>;
 }
 
-/// Represents the implementation type of a command operation.
+/// Represents the implementation type of the command operation.
 ///
 /// This enum has two variants:
 ///
 /// - `Default`: The default implementation type, used when no specific operation is specified.
 /// - `Simulated`: Represents a simulated implementation type, often used for testing or scenarios where the operation doesn't interact with a real system.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub enum CommandOperationImpl {
     #[default]
     Default,
     Simulated(SimulatedData),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 struct LinkedDirectory {
     path: PathBuf,
     link_path: PathBuf,
 }
 
 /// A structure representing simulated data for tracking created directories and symbolic links.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct SimulatedData {
     created_directories: Vec<PathBuf>,
     created_links: Vec<LinkedDirectory>,
+    color_support: ColorSupport,
+}
+
+impl SimulatedData {
+    pub const fn with_color_support(mut self, color_support: ColorSupport) -> Self {
+        self.color_support = color_support;
+        self
+    }
 }
 
 /// A struct that provides an iterator for reading entries in a directory.
@@ -402,7 +410,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     link_path: target.to_path_buf(),
                 });
 
-                println!("LINK: {} => {}", item.display(), target.display());
+                data.color_support.print_link_text(item, target);
             }
         }
 
@@ -427,7 +435,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     link_path: target.to_path_buf(),
                 });
 
-                println!("LINK: {} => {}", item.display(), target.display());
+                data.color_support.print_link_text(item, target);
             }
         }
 
@@ -447,8 +455,8 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                 debug!("Deleting symlink: {}", entry_path.display());
                 fs::remove_file(entry_path)?;
             }
-            Self::Simulated(_) => {
-                println!("UNLINK: {}", entry_path.display());
+            Self::Simulated(data) => {
+                data.color_support.print_unlink_text(entry_path);
             }
         }
 
@@ -472,8 +480,8 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     fs::remove_file(entry_path)?;
                 }
             }
-            Self::Simulated(_) => {
-                println!("UNLINK: {}", entry_path.display());
+            Self::Simulated(data) => {
+                data.color_support.print_unlink_text(entry_path);
             }
         }
 
@@ -492,7 +500,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     fs::remove_file(target)?;
                 }
             }
-            Self::Simulated(_) => println!("RM: {}", target.display()),
+            Self::Simulated(data) => data.color_support.print_remove_text(target),
         }
 
         Ok(())
@@ -507,7 +515,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
             }
             Self::Simulated(data) => {
                 data.created_directories.push(target.to_owned());
-                println!("MKDIR: {}", target.display());
+                data.color_support.print_create_text(target);
             }
         }
 
@@ -536,16 +544,9 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink())
     }
 
-    #[cfg(not(target_os = "windows"))]
     #[instrument(level = "trace")]
     fn read_link(&self, target: &Path) -> Result<PathBuf, CommandError> {
         target.canonicalize().map_err(Into::into)
-    }
-
-    #[cfg(target_os = "windows")]
-    #[instrument(level = "trace")]
-    fn read_link(&self, target: &Path) -> Result<PathBuf, CommandError> {
-        target.read_link().map_err(Into::into)
     }
 
     #[instrument(level = "trace")]
