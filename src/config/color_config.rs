@@ -20,7 +20,7 @@ use crossterm::style::Color;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ColorConfig {
     pub enabled: bool,
     #[serde(flatten)]
@@ -52,7 +52,7 @@ impl Display for ColorSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ColorSettings {
     pub link: Color,
     pub unlink: Color,

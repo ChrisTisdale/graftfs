@@ -177,6 +177,7 @@ file supports regex patterns and comments starting with `#`.
 ### Windows Support
 
 For Windows, graftfs will require either enabling developer mode or running as an administrator. This is because graftfs
-use symlinks which on Windows require admin privileges. For more information or how to not need admin access, see
-[here](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/create-symbolic-links).
-If you would like to enable developer mode, see [here](https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development)
+use symlinks which on Windows require admin privileges. For more information or how to not need admin access,
+see [create-symbolic-links](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/create-symbolic-links).
+If you would like to enable developer mode,
+see [enable-developer-mode](https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development)

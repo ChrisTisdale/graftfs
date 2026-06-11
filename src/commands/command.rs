@@ -83,7 +83,7 @@ pub struct CommandData<
 ///     if let Some(parent) = parent {
 ///         let builder = CommandBuilder::<CommandOperationImpl>::new()
 ///             .with_directory(directory)
-///             .clone_with_target(parent)
+///             .with_target(parent)
 ///             .stow();
 ///         let command = builder.build()?;
 ///         println!("Built command: {command}");
@@ -153,7 +153,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     ///     if let Some(parent) = parent {
     ///         let builder = CommandBuilder::<CommandOperationImpl>::new()
     ///             .with_directory(directory)
-    ///             .clone_with_target(parent)
+    ///             .with_target(parent)
     ///             .stow();
     ///         let command = builder.build()?;
     ///         command.execute()?;
@@ -200,7 +200,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             ));
         }
 
-        Self::process_directory_entry(&args.directory, args, operation)?;
+        Self::process_directory_entry(&args.directory, &args.target, args, operation)?;
         Ok(())
     }
 
@@ -255,23 +255,29 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         Self::path_matches_filter("Override", entry_path, &filter.overrides)
     }
 
-    fn process_directory_entry(entry: &Path, args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
+    fn process_directory_entry(
+        entry: &Path,
+        target: &Path,
+        args: &StowData,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
         trace!("Processing directory entry: {}", entry.display());
-        Self::process_directory(entry, args, operation, Self::stow_item)
+        Self::process_directory(entry, target, args, operation, Self::stow_item)
     }
 
     fn process_directory<TData, F>(
         entry: &Path,
+        target: &Path,
         args: &TData,
         operation: &mut TCommand,
-        mut processor: F,
+        processor: F,
     ) -> Result<(), CommandError>
     where
-        F: FnMut(&Path, &TData, &mut TCommand) -> Result<(), CommandError>,
+        F: Fn(&Path, &Path, &TData, &mut TCommand) -> Result<(), CommandError>,
     {
         for entry in operation.read_directory(entry)? {
             match entry {
-                Ok(e) => processor(&e, args, operation)?,
+                Ok(e) => processor(&e, target, args, operation)?,
                 Err(e) => warn!("Failed to read directory entry: {e}"),
             }
         }
@@ -279,7 +285,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         Ok(())
     }
 
-    fn stow_item(item: &Path, args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
+    fn stow_item(item: &Path, target: &Path, args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
         trace!("Reviewing directory entry: {}", item.display());
         if Self::is_ignored(item, &args.options.filter) {
             debug!("Ignoring item: {}", item.display());
@@ -308,7 +314,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 
         let no_folding = operation.is_directory(item) && args.options.no_folding;
         let file_name = Self::get_item_name(item, args.options.dot_file_prefix.as_ref())?;
-        let full_path = args.target.join(file_name);
+        let full_path = target.join(file_name);
         trace!(
             "Stowing directory entry: {}.  With no folding: {}",
             item.display(),
@@ -353,11 +359,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     ) -> Result<(), CommandError> {
         info!("Creating directory: {}", full_path.display());
         operation.create_directory(full_path)?;
-        Self::process_directory_entry(
-            entry_path,
-            &args.clone_with_target(full_path.to_path_buf()),
-            operation,
-        )
+        Self::process_directory_entry(entry_path, full_path, args, operation)
     }
 
     fn handle_existing_item(
@@ -376,11 +378,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
                 full_path.display()
             );
 
-            Self::process_directory_entry(
-                &item,
-                &args.clone_with_target(full_path.to_path_buf()),
-                operation,
-            )?;
+            Self::process_directory_entry(&item, full_path, args, operation)?;
 
             Ok(())
         } else if Self::should_override(full_path, &args.options.filter) && operation.is_file(full_path) {
@@ -408,7 +406,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             args.target.display()
         );
 
-        Self::unstow_directory_entry(&args.directory, args, operation)?;
+        Self::unstow_directory_entry(&args.directory, &args.target, args, operation)?;
         Ok(())
     }
 
@@ -419,26 +417,35 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             args.target.display()
         );
 
-        Self::list_directory_entry(&args.directory, args, operation)?;
+        Self::list_directory_entry(&args.directory, &args.target, args, operation)?;
         Ok(())
     }
 
-    fn unstow_directory_entry(entry: &Path, args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
-        Self::process_directory(entry, args, operation, Self::unstow_item)
+    fn unstow_directory_entry(
+        entry: &Path,
+        target: &Path,
+        args: &UnstowData,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
+        Self::process_directory(entry, target, args, operation, Self::unstow_item)
     }
 
-    fn unstow_item(item: &Path, args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
+    fn unstow_item(
+        item: &Path,
+        target: &Path,
+        args: &UnstowData,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
         let item = item.canonicalize()?;
         let item_name = Self::get_item_name(&item, args.dot_file_prefix.as_ref())?;
-        let full_path = args.target.join(item_name);
+        let full_path = target.join(item_name);
 
         if operation.is_symlink(&full_path) && operation.read_link(&full_path).is_ok_and(|p| p == item) {
             info!("Removing symlink: {}", full_path.display());
             operation.remove_link(&full_path)?;
-            Self::cleanup_empty_parent(&full_path, &args.target, operation)?;
+            Self::cleanup_empty_parent(&full_path, target, operation)?;
         } else if operation.is_directory(&full_path) && operation.is_directory(&item) {
-            Self::unstow_directory_entry(&item, &args.clone_with_target(full_path.clone()), operation)?;
-
+            Self::unstow_directory_entry(&item, &full_path, args, operation)?;
             if operation.is_directory(&full_path)
                 && operation
                     .read_directory(&full_path)
@@ -446,28 +453,33 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             {
                 info!("Removing empty directory: {}", full_path.display());
                 operation.remove_item(&full_path)?;
-                Self::cleanup_empty_parent(&full_path, &args.target, operation)?;
+                Self::cleanup_empty_parent(&full_path, target, operation)?;
             }
         }
 
         Ok(())
     }
 
-    fn list_directory_entry(entry: &Path, args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
-        Self::process_directory(entry, args, operation, Self::list_item)
+    fn list_directory_entry(
+        entry: &Path,
+        target: &Path,
+        args: &ListData,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
+        Self::process_directory(entry, target, args, operation, Self::list_item)
     }
 
-    fn list_item(item: &Path, args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
+    fn list_item(item: &Path, target: &Path, args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
         let item = item.canonicalize().map_err(CommandError::from)?;
         let item_name = Self::get_item_name(&item, args.dot_file_prefix.as_ref())?;
-        let full_path = args.target.join(item_name);
+        let full_path = target.join(item_name);
 
         if operation.is_symlink(&full_path) && operation.read_link(&full_path).is_ok_and(|p| p == item) {
             debug!("Found symlink: {}", full_path.display());
             args.color_support.print_list_text(&item, &full_path);
         } else if operation.is_directory(&full_path) && operation.is_directory(&item) {
             debug!("Found directory: {}", full_path.display());
-            Self::list_directory_entry(&item, &args.clone_with_target(full_path), operation)?;
+            Self::list_directory_entry(&item, &full_path, args, operation)?;
         }
 
         Ok(())

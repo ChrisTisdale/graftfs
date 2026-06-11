@@ -347,7 +347,7 @@ const fn default_max_log_files() -> usize {
     5
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct LoggingConfig {
     #[serde(default)]
     pub level: LoggingLevel,

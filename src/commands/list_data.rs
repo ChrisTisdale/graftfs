@@ -45,14 +45,4 @@ impl ListData {
             color_support: Rc::new(color_support),
         }
     }
-
-    #[must_use]
-    pub fn clone_with_target(&self, target: PathBuf) -> Self {
-        Self {
-            target,
-            directory: self.directory.clone(),
-            dot_file_prefix: self.dot_file_prefix.clone(),
-            color_support: Rc::clone(&self.color_support),
-        }
-    }
 }

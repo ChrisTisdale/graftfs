@@ -49,7 +49,7 @@ use std::fmt::Display;
 use std::path::Path;
 use std::{env, fs};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct Config {
     #[serde(default)]
     pub version: ConfigFileVersion,
@@ -155,12 +155,16 @@ mod test {
         file = "ignored_files.txt"
         comment = 'c'
 
+        [overrides]
+        file = "override_files.txt"
+        comment = 'q'
+
         [logging]
         level = "info"
         file = "temp.log"
         logging_path = "log_dir"
         rotation = "daily"
-        format = "json"
+        format = "pretty"
         max_log_files = 10
         color_support = true
 
@@ -177,25 +181,48 @@ mod test {
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
-        assert_eq!(config.ignored.file, Path::new("ignored_files.txt"));
-        assert_eq!(config.ignored.comment, 'c');
         assert_eq!(config.version, ConfigFileVersion::V1);
-        assert_eq!(config.logging.file, Some(PathBuf::from("temp.log")));
-        assert_eq!(config.logging.logging_path, Some(PathBuf::from("log_dir")));
-        assert_eq!(config.logging.rotation, RotationType::Daily);
-        assert_eq!(config.logging.format, LoggingFormat::Json);
-        assert_eq!(config.logging.max_log_files, 10);
-        assert!(config.logging.color_support);
-        assert_eq!(config.logging.level, LoggingLevel::Info);
-        assert!(config.color.enabled);
-        assert_eq!(config.color.settings.link, Color::Green);
-        assert_eq!(config.color.settings.unlink, Color::Red);
-        assert_eq!(config.color.settings.list, Color::Blue);
-        assert_eq!(config.color.settings.remove, Color::Yellow);
-        assert_eq!(config.color.settings.create, Color::Cyan);
-        assert_eq!(config.color.settings.arrow, Color::Magenta);
-        assert_eq!(config.color.settings.source, Color::White);
-        assert_eq!(config.color.settings.target, Color::Black);
+        let expected_ignore = Ignored {
+            file: PathBuf::from("ignored_files.txt"),
+            comment: 'c',
+        };
+
+        assert_eq!(config.ignored, expected_ignore);
+        let expected_override = Overrides {
+            file: PathBuf::from("override_files.txt"),
+            comment: 'q',
+        };
+
+        assert_eq!(config.overrides, expected_override);
+        let expected_logging = LoggingConfig {
+            level: LoggingLevel::Info,
+            file: Some(PathBuf::from("temp.log")),
+            logging_path: Some(PathBuf::from("log_dir")),
+            rotation: RotationType::Daily,
+            format: LoggingFormat::Pretty,
+            max_log_files: 10,
+            color_support: true,
+        };
+
+        assert_eq!(config.logging, expected_logging);
+
+        let settings = ColorSettings {
+            link: Color::Green,
+            unlink: Color::Red,
+            list: Color::Blue,
+            remove: Color::Yellow,
+            create: Color::Cyan,
+            arrow: Color::Magenta,
+            source: Color::White,
+            target: Color::Black,
+        };
+
+        let expected_color = ColorConfig {
+            enabled: true,
+            settings,
+        };
+
+        assert_eq!(config.color, expected_color);
     }
 
     #[test]
@@ -222,22 +249,11 @@ mod test {
         let default_config = Config::default();
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
         assert_eq!(config.version, ConfigFileVersion::V1);
-        assert_eq!(
-            config.logging.logging_path,
-            default_config.logging.logging_path
-        );
-        assert_eq!(config.logging.rotation, default_config.logging.rotation);
-        assert_eq!(
-            config.logging.max_log_files,
-            default_config.logging.max_log_files
-        );
-        assert_eq!(
-            config.logging.color_support,
-            default_config.logging.color_support
-        );
-        assert_eq!(config.logging.level, default_config.logging.level);
-        assert_eq!(config.ignored.file, default_config.ignored.file);
-        assert_eq!(config.ignored.comment, default_config.ignored.comment);
+        assert_eq!(config.logging, default_config.logging);
+        assert_eq!(config.ignored, default_config.ignored);
+        assert_eq!(config.overrides, default_config.overrides);
+        assert_eq!(config.color.enabled, default_config.color.enabled);
+        assert_eq!(config.color, default_config.color);
     }
 
     #[test]
@@ -503,19 +519,25 @@ mod test {
         create = "Yellow"
         arrow = "Cyan"
         source = "Black"
-        target = "White"
+        target = "Grey"
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
-        assert!(config.color.enabled);
-        assert_eq!(config.color.settings.link, Color::Green);
-        assert_eq!(config.color.settings.unlink, Color::Red);
-        assert_eq!(config.color.settings.list, Color::Blue);
-        assert_eq!(config.color.settings.remove, Color::Magenta);
-        assert_eq!(config.color.settings.create, Color::Yellow);
-        assert_eq!(config.color.settings.arrow, Color::Cyan);
-        assert_eq!(config.color.settings.source, Color::Black);
-        assert_eq!(config.color.settings.target, Color::White);
+        let expected_color = ColorConfig {
+            enabled: true,
+            settings: ColorSettings {
+                link: Color::Green,
+                unlink: Color::Red,
+                list: Color::Blue,
+                remove: Color::Magenta,
+                create: Color::Yellow,
+                arrow: Color::Cyan,
+                source: Color::Black,
+                target: Color::Grey,
+            },
+        };
+
+        assert_eq!(config.color, expected_color);
     }
 
     #[test]
@@ -536,70 +558,52 @@ mod test {
        "##;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
-        assert!(config.color.enabled);
-        assert_eq!(
-            config.color.settings.link,
-            Color::Rgb {
-                r: 39,
-                g: 245,
-                b: 77
-            }
-        );
-        assert_eq!(
-            config.color.settings.unlink,
-            Color::Rgb {
-                r: 245,
-                g: 73,
-                b: 39
-            }
-        );
-        assert_eq!(
-            config.color.settings.list,
-            Color::Rgb {
-                r: 39,
-                g: 245,
-                b: 77
-            }
-        );
-        assert_eq!(
-            config.color.settings.remove,
-            Color::Rgb {
-                r: 245,
-                g: 73,
-                b: 39
-            }
-        );
-        assert_eq!(
-            config.color.settings.create,
-            Color::Rgb {
-                r: 245,
-                g: 73,
-                b: 39
-            }
-        );
-        assert_eq!(
-            config.color.settings.arrow,
-            Color::Rgb {
-                r: 245,
-                g: 73,
-                b: 39
-            }
-        );
-        assert_eq!(
-            config.color.settings.source,
-            Color::Rgb {
-                r: 245,
-                g: 73,
-                b: 39
-            }
-        );
-        assert_eq!(
-            config.color.settings.target,
-            Color::Rgb {
-                r: 245,
-                g: 73,
-                b: 39
-            }
-        );
+        let expected_color = ColorConfig {
+            enabled: true,
+            settings: ColorSettings {
+                link: Color::Rgb {
+                    r: 0x27,
+                    g: 0xF5,
+                    b: 0x4D,
+                },
+                unlink: Color::Rgb {
+                    r: 0xF5,
+                    g: 0x49,
+                    b: 0x27,
+                },
+                list: Color::Rgb {
+                    r: 0x27,
+                    g: 0xF5,
+                    b: 0x4D,
+                },
+                remove: Color::Rgb {
+                    r: 0xF5,
+                    g: 0x49,
+                    b: 0x27,
+                },
+                create: Color::Rgb {
+                    r: 0xF5,
+                    g: 0x49,
+                    b: 0x27,
+                },
+                arrow: Color::Rgb {
+                    r: 0xF5,
+                    g: 0x49,
+                    b: 0x27,
+                },
+                source: Color::Rgb {
+                    r: 0xF5,
+                    g: 0x49,
+                    b: 0x27,
+                },
+                target: Color::Rgb {
+                    r: 0xF5,
+                    g: 0x49,
+                    b: 0x27,
+                },
+            },
+        };
+
+        assert_eq!(config.color, expected_color);
     }
 }

@@ -19,10 +19,9 @@
 use grep::pcre2::{RegexMatcher, RegexMatcherBuilder};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
-use std::rc::Rc;
 use tracing::{debug, instrument, trace, warn};
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct StowFilter {
     pub(crate) ignored: Vec<RegexMatcher>,
     pub(crate) overrides: Vec<RegexMatcher>,
@@ -44,11 +43,11 @@ pub struct StowOptions {
     pub(crate) no_folding: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StowData {
     pub(crate) target: PathBuf,
     pub(crate) directory: PathBuf,
-    pub(crate) options: Rc<StowOptions>,
+    pub(crate) options: StowOptions,
 }
 
 impl StowOptions {
@@ -92,16 +91,7 @@ impl StowData {
         Self {
             target,
             directory,
-            options: Rc::new(options),
-        }
-    }
-
-    #[must_use]
-    pub fn clone_with_target(&self, target: PathBuf) -> Self {
-        Self {
-            target,
-            directory: self.directory.clone(),
-            options: Rc::clone(&self.options),
+            options,
         }
     }
 }

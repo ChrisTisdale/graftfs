@@ -223,7 +223,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
-    ///     .clone_with_target(Path::new("/path/to/target").to_path_buf())
+    ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
     ///     .unstow()
     ///     .build();
@@ -362,7 +362,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
-    ///     .clone_with_target(Path::new("/path/to/target").to_path_buf())
+    ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
     ///     .stow()
     ///     .build();
@@ -502,7 +502,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
-    ///     .clone_with_target(Path::new("/path/to/target").to_path_buf())
+    ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
     ///     .restow()
     ///     .build();
@@ -614,7 +614,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
-    ///     .clone_with_target(Path::new("/path/to/target").to_path_buf())
+    ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
     ///     .list()
     ///     .build();

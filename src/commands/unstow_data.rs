@@ -19,7 +19,7 @@
 use std::path::PathBuf;
 use tracing::instrument;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct UnstowData {
     pub(crate) target: PathBuf,
     pub(crate) directory: PathBuf,
@@ -34,15 +34,6 @@ impl UnstowData {
             target,
             directory,
             dot_file_prefix,
-        }
-    }
-
-    #[must_use]
-    pub fn clone_with_target(&self, target: PathBuf) -> Self {
-        Self {
-            target,
-            directory: self.directory.clone(),
-            dot_file_prefix: self.dot_file_prefix.clone(),
         }
     }
 }

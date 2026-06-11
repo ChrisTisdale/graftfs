@@ -20,7 +20,7 @@ use crate::commands::{StowData, StowOptions, UnstowData};
 use std::path::PathBuf;
 use tracing::instrument;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RestowData {
     pub(crate) unstow_data: UnstowData,
     pub(crate) stow_data: StowData,
