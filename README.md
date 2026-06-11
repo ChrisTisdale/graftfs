@@ -28,6 +28,20 @@ locations (e.g., in your home directory).
 
 - **Rust**: Latest stable release
 
+### From Crates IO
+
+1. Install this package from creates IO by running the following command:
+
+   ```bash
+   cargo install graftfs --locked
+   ```
+
+2. The binary will now be in your path and you can run the command as follows:
+
+   ```bash
+   graft [OPTIONS] [COMMAND]
+   ```
+
 ### From Source
 
 1. **Clone the repository**:
