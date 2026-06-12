@@ -18,15 +18,14 @@
 
 use crate::commands::ColorSupport;
 use std::path::PathBuf;
-use std::rc::Rc;
 use tracing::instrument;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ListData {
     pub(crate) target: PathBuf,
     pub(crate) directory: PathBuf,
     pub(crate) dot_file_prefix: Option<String>,
-    pub(crate) color_support: Rc<ColorSupport>,
+    pub(crate) color_support: ColorSupport,
 }
 
 impl ListData {
@@ -42,7 +41,7 @@ impl ListData {
             target,
             directory,
             dot_file_prefix,
-            color_support: Rc::new(color_support),
+            color_support,
         }
     }
 }

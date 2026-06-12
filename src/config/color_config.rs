@@ -20,7 +20,7 @@ use crossterm::style::Color;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ColorConfig {
     pub enabled: bool,
     #[serde(flatten)]
