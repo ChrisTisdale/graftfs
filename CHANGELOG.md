@@ -5,7 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.0 (2026-06-14)
+
+### New Features
+
+ - <csr-id-16d0969d5eee43ce3cef8464253ea7d318f01e45/> Moving completions to feature
+   Moving the completions to a feature toggle as they are not fully
+   supported and still experimental.
+ - <csr-id-05cf65240884246638f574e656cb8caa4c60fb93/> Cleaning up completions
+   Doing some code cleanup for command line completions
+ - <csr-id-4c4f742ba8e8e3b2717f215b64c75a13064e16aa/> Shell completion support
+   Adding support for generating command line completions for different shells
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Moving completions to feature ([`16d0969`](https://github.com/ChrisTisdale/graftfs/commit/16d0969d5eee43ce3cef8464253ea7d318f01e45))
+    - Cleaning up completions ([`05cf652`](https://github.com/ChrisTisdale/graftfs/commit/05cf65240884246638f574e656cb8caa4c60fb93))
+    - Shell completion support ([`4c4f742`](https://github.com/ChrisTisdale/graftfs/commit/4c4f742ba8e8e3b2717f215b64c75a13064e16aa))
+</details>
+
 ## v0.2.2 (2026-06-13)
+
+<csr-id-dc71afbcdfc0f9266f7a517154b5408a94714e91/>
+<csr-id-30ee6f559d6240abb10f8d858bab4f07ebc1c565/>
 
 ### Chore
 
@@ -18,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 1 day passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -30,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release graftfs v0.2.2 ([`eeb12a1`](https://github.com/ChrisTisdale/graftfs/commit/eeb12a1e9bacb80c78f559141a3ed125d095f46f))
     - Updating dependencies ([`dc71afb`](https://github.com/ChrisTisdale/graftfs/commit/dc71afbcdfc0f9266f7a517154b5408a94714e91))
     - Updating dependencies ([`30ee6f5`](https://github.com/ChrisTisdale/graftfs/commit/30ee6f559d6240abb10f8d858bab4f07ebc1c565))
 </details>
