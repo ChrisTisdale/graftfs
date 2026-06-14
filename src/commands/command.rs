@@ -216,7 +216,9 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 
         if let Some(name) = entry_path.as_os_str().to_str() {
             for matcher in filters {
-                if matcher.is_match(name.as_bytes()).unwrap_or(false) {
+                if let Some(size) = matcher.shortest_match(name.as_bytes()).unwrap_or(None)
+                    && size == name.len()
+                {
                     info!("{caller} - entry found: {}", entry_path.display());
                     return true;
                 }
