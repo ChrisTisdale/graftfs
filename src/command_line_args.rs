@@ -23,12 +23,13 @@ use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_r
 use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
-use clap_complete::{Shell, generate};
 use std::fmt::Display;
-use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::level_filters::LevelFilter;
+
+#[cfg(feature = "completions")]
+use clap_complete::{Shell, generate};
 
 const APP_NAME: &str = env!("CARGO_BIN_NAME");
 const STYLES: Styles = Styles::styled();
@@ -199,6 +200,7 @@ struct GlobalArgs {
         help = "Generate shell completions for the application.",
         value_name = "SHELL"
     )]
+    #[cfg(feature = "completions")]
     completions: Option<Shell>,
     #[clap(flatten)]
     logging_args: LoggingArgs,
@@ -222,11 +224,13 @@ pub struct CommandLineProcessor {
     stow_args: StowArgs,
 }
 
+#[cfg(feature = "completions")]
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CompletionPrinter {
     shell: Shell,
 }
 
+#[cfg(feature = "completions")]
 impl CompletionPrinter {
     const fn new(shell: Shell) -> Self {
         Self { shell }
@@ -240,7 +244,7 @@ impl CompletionPrinter {
             self.shell,
             &mut CommandLineProcessor::command(),
             APP_NAME,
-            &mut stdout(),
+            &mut std::io::stdout(),
         );
 
         std::process::exit(0);
@@ -291,6 +295,7 @@ impl CommandLineProcessor {
     pub fn get_cli_args() -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let cli_args = Self::try_parse()?;
         let global = cli_args.global_args;
+        #[cfg(feature = "completions")]
         if let Some(shell) = global.completions {
             return Err(CliError::PrintCompletions(CompletionPrinter::new(shell)));
         }
