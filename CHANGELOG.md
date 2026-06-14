@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.1 (2026-06-14)
+
+### Bug Fixes
+
+ - <csr-id-4c3fde2c8f650397012318ad509dc2afa12e8eea/> Fixing matching issues
+   Addressing issues where matches would return on a partial match instead
+   of a full match.  This causes issues for things like gitconfig files
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Fixing matching issues ([`4c3fde2`](https://github.com/ChrisTisdale/graftfs/commit/4c3fde2c8f650397012318ad509dc2afa12e8eea))
+</details>
+
 ## v0.3.0 (2026-06-14)
 
 ### New Features
@@ -21,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -32,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release graftfs v0.3.0 ([`84a44f5`](https://github.com/ChrisTisdale/graftfs/commit/84a44f55d7bcd07dc55faff00eb1ab90f2f928b6))
     - Moving completions to feature ([`16d0969`](https://github.com/ChrisTisdale/graftfs/commit/16d0969d5eee43ce3cef8464253ea7d318f01e45))
     - Cleaning up completions ([`05cf652`](https://github.com/ChrisTisdale/graftfs/commit/05cf65240884246638f574e656cb8caa4c60fb93))
     - Shell completion support ([`4c4f742`](https://github.com/ChrisTisdale/graftfs/commit/4c4f742ba8e8e3b2717f215b64c75a13064e16aa))
