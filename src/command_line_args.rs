@@ -23,7 +23,9 @@ use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_r
 use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
+use clap_complete::{Shell, generate};
 use std::fmt::Display;
+use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::level_filters::LevelFilter;
@@ -191,6 +193,13 @@ struct GlobalArgs {
         num_args = 0..=1
     )]
     dotfiles: Option<String>,
+    #[arg(
+        long = "completions",
+        global = true,
+        help = "Generate shell completions for the application.",
+        value_name = "SHELL"
+    )]
+    completions: Option<Shell>,
     #[clap(flatten)]
     logging_args: LoggingArgs,
 }
@@ -214,6 +223,18 @@ pub struct CommandLineProcessor {
 }
 
 impl CommandLineProcessor {
+    /// Prints completions for the given shell.
+    ///
+    /// This function generates completions for the specified shell and exits the program and will exit with a zero status code.
+    ///
+    /// # Arguments
+    ///
+    /// `shell`: The shell for which completions are to be generated.
+    pub fn print_completions(shell: Shell) -> ! {
+        generate(shell, &mut Self::command(), APP_NAME, &mut stdout());
+        std::process::exit(0);
+    }
+
     /// Parses and processes command-line arguments to configure the CLI application.
     ///
     /// This function performs the following steps:
@@ -257,6 +278,10 @@ impl CommandLineProcessor {
     pub fn get_cli_args() -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let cli_args = Self::try_parse()?;
         let global = cli_args.global_args;
+        if let Some(shell) = global.completions {
+            return Err(CliError::PrintCompletions(shell));
+        }
+
         let stow_args = cli_args.stow_args;
         let logging_args = global.logging_args;
         let directories = stow_args.directory_args;

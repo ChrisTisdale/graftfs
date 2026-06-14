@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use clap_complete::Shell;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -44,4 +45,6 @@ pub enum CliError {
     CommandBuildError(#[from] crate::commands::CommandBuildError),
     #[error(transparent)]
     ResolveError(#[from] crate::config::ResolveError),
+    #[error("Printing completions for {0}")]
+    PrintCompletions(Shell),
 }
