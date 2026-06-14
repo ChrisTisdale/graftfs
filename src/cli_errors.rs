@@ -45,6 +45,5 @@ pub enum CliError {
     #[error(transparent)]
     ResolveError(#[from] crate::config::ResolveError),
     #[error("Printing completions requested.")]
-    #[cfg(feature = "completions")]
     PrintCompletions(crate::command_line_args::CompletionPrinter),
 }

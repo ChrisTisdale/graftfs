@@ -93,10 +93,34 @@ cargo install graftfs --locked --features completions
 
 #### Fish
 
-Configure fish completions by running:
+Configure fish completions by adding the following to your `~/.config/fish/config.fish` file:
 
 ```bash
-graft --completions fish >> ~/.config/fish/completions/graft.fish
+graft completions fish | source
+```
+
+#### Zsh
+
+Configure zsh completions by adding the following to your `~/.zshrc` file:
+
+```bash
+eval "$(graft completions zsh)"
+```
+
+#### Bash
+
+Configure bash completions by adding the following to your `~/.bashrc` file:
+
+```bash
+eval "$(graft completions bash)"
+```
+
+#### PowerShell
+
+Configure PowerShell completions by adding the following to your `$PROFILE` file:
+
+```powershell
+graft completions powershell | Out-String | Invoke-Expression
 ```
 
 ## Configuration
@@ -161,21 +185,21 @@ target = "Magenta"
 
 - `enabled`: Whether to enable color support in logs (default: True)
 - `link`: The color of the link text (default: 'Green').
-    - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+  - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
 - `unlink`: The color of the unlink text (default: 'Red').
-    - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
+  - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
 - `list`: The color of the list text (default: 'Cyan')
-    - Colors can be specified as either a string (e.g., 'Cyan') or a hex code (e.g., '#00FFFF').
+  - Colors can be specified as either a string (e.g., 'Cyan') or a hex code (e.g., '#00FFFF').
 - `remove`: The color of the remove text (default: 'Red')
-    - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
+  - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
 - `create`: The color of the create text (default: 'Green')
-    - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+  - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
 - `arrow`: The color of the arrow text (default: 'Blue')
-    - Colors can be specified as either a string (e.g., 'Blue') or a hex code (e.g., '#0000FF').
+  - Colors can be specified as either a string (e.g., 'Blue') or a hex code (e.g., '#0000FF').
 - `source`: The color of the source text (default: 'Yellow')
-    - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
+  - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
 - `target`: The color of the target text (default: 'Magenta')
-    - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
+  - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
 
 ### Configuration Location
 

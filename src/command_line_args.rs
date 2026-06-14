@@ -23,20 +23,18 @@ use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_r
 use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
+use clap_complete::{Shell, generate};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::level_filters::LevelFilter;
-
-#[cfg(feature = "completions")]
-use clap_complete::{Shell, generate};
 
 const APP_NAME: &str = env!("CARGO_BIN_NAME");
 const STYLES: Styles = Styles::styled();
 const MISSING_DIRECTORY_ERROR: &str = "the following required arguments were not provided:
   --directory <DIRECTORY>";
 
-#[derive(Debug, Clone, Copy, PartialEq, Ord, PartialOrd, Eq, Hash, Subcommand)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Subcommand)]
 enum ProcessCommands {
     #[command(
         short_flag = 'S',
@@ -73,6 +71,19 @@ enum ProcessCommands {
         about = "List all packages in the source directory along with their stow status (stowed, unstowed, or partially stowed). This provides an overview of which packages are currently active in the target directory."
     )]
     List,
+    #[command(
+        name = "completions",
+        long_flag = "completions",
+        flatten_help = true,
+        about = "Generate shell completions for the stow command. This is useful for enhancing the user experience by providing auto-completion suggestions for command-line arguments."
+    )]
+    Completions {
+        #[clap(
+            value_enum,
+            help = "The shell for which completions should be generated."
+        )]
+        shell: Shell,
+    },
 }
 
 impl Display for ProcessCommands {
@@ -82,6 +93,7 @@ impl Display for ProcessCommands {
             Self::Delete => f.write_str("Delete"),
             Self::Restow => f.write_str("Restow"),
             Self::List => f.write_str("List"),
+            Self::Completions { .. } => f.write_str("Completions"),
         }
     }
 }
@@ -194,14 +206,6 @@ struct GlobalArgs {
         num_args = 0..=1
     )]
     dotfiles: Option<String>,
-    #[arg(
-        long = "completions",
-        global = true,
-        help = "Generate shell completions for the application.",
-        value_name = "SHELL"
-    )]
-    #[cfg(feature = "completions")]
-    completions: Option<Shell>,
     #[clap(flatten)]
     logging_args: LoggingArgs,
 }
@@ -224,13 +228,11 @@ pub struct CommandLineProcessor {
     stow_args: StowArgs,
 }
 
-#[cfg(feature = "completions")]
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CompletionPrinter {
     shell: Shell,
 }
 
-#[cfg(feature = "completions")]
 impl CompletionPrinter {
     const fn new(shell: Shell) -> Self {
         Self { shell }
@@ -294,12 +296,11 @@ impl CommandLineProcessor {
     /// ```
     pub fn get_cli_args() -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let cli_args = Self::try_parse()?;
-        let global = cli_args.global_args;
-        #[cfg(feature = "completions")]
-        if let Some(shell) = global.completions {
+        if let Some(ProcessCommands::Completions { shell }) = cli_args.process_command {
             return Err(CliError::PrintCompletions(CompletionPrinter::new(shell)));
         }
 
+        let global = cli_args.global_args;
         let stow_args = cli_args.stow_args;
         let logging_args = global.logging_args;
         let directories = stow_args.directory_args;
@@ -367,6 +368,7 @@ impl CommandLineProcessor {
                 .list()
                 .with_color_support(app_config.color_support())
                 .build(),
+            ProcessCommands::Completions { .. } => unreachable!(),
         }?;
 
         Ok(CliArgs::new(command, guard))
