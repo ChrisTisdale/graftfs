@@ -222,19 +222,32 @@ pub struct CommandLineProcessor {
     stow_args: StowArgs,
 }
 
-impl CommandLineProcessor {
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct CompletionPrinter {
+    shell: Shell,
+}
+
+impl CompletionPrinter {
+    const fn new(shell: Shell) -> Self {
+        Self { shell }
+    }
+
     /// Prints completions for the given shell.
     ///
     /// This function generates completions for the specified shell and exits the program and will exit with a zero status code.
-    ///
-    /// # Arguments
-    ///
-    /// `shell`: The shell for which completions are to be generated.
-    pub fn print_completions(shell: Shell) -> ! {
-        generate(shell, &mut Self::command(), APP_NAME, &mut stdout());
+    pub fn print_completions(&self) -> ! {
+        generate(
+            self.shell,
+            &mut CommandLineProcessor::command(),
+            APP_NAME,
+            &mut stdout(),
+        );
+
         std::process::exit(0);
     }
+}
 
+impl CommandLineProcessor {
     /// Parses and processes command-line arguments to configure the CLI application.
     ///
     /// This function performs the following steps:
@@ -279,7 +292,7 @@ impl CommandLineProcessor {
         let cli_args = Self::try_parse()?;
         let global = cli_args.global_args;
         if let Some(shell) = global.completions {
-            return Err(CliError::PrintCompletions(shell));
+            return Err(CliError::PrintCompletions(CompletionPrinter::new(shell)));
         }
 
         let stow_args = cli_args.stow_args;
