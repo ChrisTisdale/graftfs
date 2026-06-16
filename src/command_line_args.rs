@@ -24,6 +24,7 @@ use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Shell, generate};
+use std::collections::HashSet;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -34,16 +35,150 @@ const STYLES: Styles = Styles::styled();
 const MISSING_DIRECTORY_ERROR: &str = "the following required arguments were not provided:
   --directory <DIRECTORY>";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Subcommand)]
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct GlobalArgs {
+    #[arg(
+        long = "no-color",
+        help = "Disable color output. This will prevent the application from using ANSI escape codes to format text and output.",
+        action = clap::ArgAction::SetTrue,
+        hide = true,
+    )]
+    no_color: bool,
+    #[arg(
+        short = 'c',
+        long = "config",
+        help = concat!("Path to a custom configuration file. If not specified, ", env!("CARGO_BIN_NAME"), " looks for a '.", env!("CARGO_BIN_NAME"), ".toml' file in the current working directory."),
+        value_name = "FILE",
+        value_hint = ValueHint::FilePath
+    )]
+    config_file: Option<PathBuf>,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct DirectoryArgs {
+    #[arg(
+        short = 'd',
+        long = "directory",
+        alias = "dir",
+        visible_alias = "dir",
+        help = "Specify the source directory (stow directory) containing the packages to be managed. If not provided, it defaults to the current working directory.",
+        value_name = "DIRECTORY",
+        value_hint = ValueHint::DirPath
+    )]
+    source: Option<PathBuf>,
+    #[arg(
+        short = 't',
+        long = "target",
+        help = "Specify the target directory where symbolic links will be created. By default, this is the parent of the source directory.",
+        value_name = "DIRECTORY",
+        value_hint = ValueHint::DirPath
+    )]
+    target: Option<PathBuf>,
+    #[arg(
+        long = "dotfiles",
+        help = "Enable special handling for dotfiles by automatically renaming files with a specific prefix. For example, using the default 'dot-' prefix, a file named 'dot-bashrc' will be stowed as '.bashrc' in the target directory.",
+        value_name = "PREFIX",
+        default_missing_value = "dot-",
+        num_args = 0..=1
+    )]
+    dotfiles: Option<String>,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct LoggingArgs {
+    #[arg(
+        short = 'l',
+        long = "log-level",
+        help = "Set the application logging level. Supported levels are: Trace, Debug, Info, Warn, Error, or Off. This is primarily used for troubleshooting and debugging.",
+        value_name = "LEVEL"
+    )]
+    log_level: Option<LevelFilter>,
+    #[arg(
+        long = "log-format",
+        help = "Set the logging format. Supported formats are: Text, JSON, or Combined.",
+        value_name = "FORMAT"
+    )]
+    log_format: Option<LoggingFormat>,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct StowArgs {
+    #[arg(
+        long = "no-folding",
+        help = "Disable directory folding during stowing and refolding during deletion. Folding is a technique where a single symbolic link to a directory is used instead of individual links for each file within that directory."
+    )]
+    no_folding: bool,
+    #[arg(
+        short = 'i',
+        long = "ignore",
+        help = "Specify a file path or a regular expression pattern to exclude specific files or directories from being processed.",
+        value_name = "PATTERN"
+    )]
+    ignored: Vec<String>,
+    #[arg(
+        short = 'o',
+        long = "override",
+        help = "Specify a file path or a regular expression pattern for files or directories that should be forcefully stowed, even if they would otherwise be ignored or causing conflicts.",
+        value_name = "PATTERN"
+    )]
+    overrides: Vec<String>,
+    #[clap(flatten)]
+    logging: LoggingArgs,
+    #[clap(flatten)]
+    directory: DirectoryArgs,
+    #[clap(flatten)]
+    global: GlobalArgs,
+    #[arg(
+        short = 'n',
+        long = "simulate",
+        alias = "no",
+        visible_alias = "no",
+        help = "Perform a dry run of the operation. This will display the actions that would be taken without making any actual changes to the filesystem."
+    )]
+    simulate: bool,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct UnstowArgs {
+    #[clap(flatten)]
+    logging: LoggingArgs,
+    #[clap(flatten)]
+    directory: DirectoryArgs,
+    #[clap(flatten)]
+    global: GlobalArgs,
+    #[arg(
+        short = 'n',
+        long = "simulate",
+        alias = "no",
+        visible_alias = "no",
+        help = "Perform a dry run of the operation. This will display the actions that would be taken without making any actual changes to the filesystem."
+    )]
+    simulate: bool,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct ListArgs {
+    #[clap(flatten)]
+    logging: LoggingArgs,
+    #[clap(flatten)]
+    directory: DirectoryArgs,
+    #[clap(flatten)]
+    global: GlobalArgs,
+}
+
+#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 enum ProcessCommands {
     #[command(
         short_flag = 'S',
         name = "stow",
         long_flag = "stow",
         flatten_help = true,
-        about = "Stow packages into the target directory, creating symbolic links for each file. This is the default operation if no command is specified."
+        about = "Stow packages into the target directory, creating symbolic links for each file."
     )]
-    Stow,
+    Stow {
+        #[clap(flatten)]
+        stow_args: StowArgs,
+    },
     #[command(
         short_flag = 'D',
         name = "delete",
@@ -54,7 +189,10 @@ enum ProcessCommands {
         flatten_help = true,
         about = "Remove symbolic links from the target directory that belong to the specified packages. This is useful for cleaning up after a package is no longer needed."
     )]
-    Delete,
+    Delete {
+        #[clap(flatten)]
+        unstow_args: UnstowArgs,
+    },
     #[command(
         short_flag = 'R',
         name = "restow",
@@ -62,7 +200,10 @@ enum ProcessCommands {
         flatten_help = true,
         about = "Restow packages by first removing their existing symbolic links and then re-stowing them. This is equivalent to running 'delete' followed by 'stow', and is useful for updating links after package contents change."
     )]
-    Restow,
+    Restow {
+        #[clap(flatten)]
+        stow_args: StowArgs,
+    },
     #[command(
         short_flag = 'L',
         name = "list",
@@ -70,7 +211,10 @@ enum ProcessCommands {
         flatten_help = true,
         about = "List all packages in the source directory along with their stow status (stowed, unstowed, or partially stowed). This provides an overview of which packages are currently active in the target directory."
     )]
-    List,
+    List {
+        #[clap(flatten)]
+        list_args: ListArgs,
+    },
     #[command(
         name = "completions",
         long_flag = "completions",
@@ -89,125 +233,13 @@ enum ProcessCommands {
 impl Display for ProcessCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Stow => f.write_str("Stow"),
-            Self::Delete => f.write_str("Delete"),
-            Self::Restow => f.write_str("Restow"),
-            Self::List => f.write_str("List"),
+            Self::Stow { .. } => f.write_str("Stow"),
+            Self::Delete { .. } => f.write_str("Delete"),
+            Self::Restow { .. } => f.write_str("Restow"),
+            Self::List { .. } => f.write_str("List"),
             Self::Completions { .. } => f.write_str("Completions"),
         }
     }
-}
-
-#[derive(Args)]
-struct DirectoryArgs {
-    #[arg(
-        short = 'd',
-        long = "directory",
-        alias = "dir",
-        global = true,
-        visible_alias = "dir",
-        help = "Specify the source directory (stow directory) containing the packages to be managed. If not provided, it defaults to the current working directory.",
-        value_name = "DIRECTORY",
-        value_hint = ValueHint::DirPath
-    )]
-    source: Option<PathBuf>,
-    #[arg(
-        short = 't',
-        long = "target",
-        global = true,
-        help = "Specify the target directory where symbolic links will be created. By default, this is the parent of the source directory.",
-        value_name = "DIRECTORY",
-        value_hint = ValueHint::DirPath
-    )]
-    target: Option<PathBuf>,
-}
-
-#[derive(Args)]
-struct LoggingArgs {
-    #[arg(
-        short = 'l',
-        long = "log-level",
-        global = true,
-        help = "Set the application logging level. Supported levels are: Trace, Debug, Info, Warn, Error, or Off. This is primarily used for troubleshooting and debugging.",
-        value_name = "LEVEL"
-    )]
-    log_level: Option<LevelFilter>,
-    #[arg(
-        long = "log-format",
-        global = true,
-        help = "Set the logging format. Supported formats are: Text, JSON, or Combined.",
-        value_name = "FORMAT"
-    )]
-    log_format: Option<LoggingFormat>,
-}
-
-#[derive(Args)]
-struct StowArgs {
-    #[arg(
-        long = "no-folding",
-        global = true,
-        help = "Disable directory folding during stowing and refolding during deletion. Folding is a technique where a single symbolic link to a directory is used instead of individual links for each file within that directory."
-    )]
-    no_folding: bool,
-    #[arg(
-        short = 'i',
-        long = "ignore",
-        global = true,
-        help = "Specify a file path or a regular expression pattern to exclude specific files or directories from being processed.",
-        value_name = "PATTERN"
-    )]
-    ignored: Vec<String>,
-    #[arg(
-        short = 'o',
-        long = "override",
-        global = true,
-        help = "Specify a file path or a regular expression pattern for files or directories that should be forcefully stowed, even if they would otherwise be ignored or causing conflicts.",
-        value_name = "PATTERN"
-    )]
-    overrides: Vec<String>,
-    #[clap(flatten)]
-    directory_args: DirectoryArgs,
-}
-
-#[derive(Args)]
-struct GlobalArgs {
-    #[arg(
-        short = 'n',
-        long = "simulate",
-        alias = "no",
-        visible_alias = "no",
-        global = true,
-        help = "Perform a dry run of the operation. This will display the actions that would be taken without making any actual changes to the filesystem."
-    )]
-    simulate: bool,
-    #[arg(
-        short = 'c',
-        long = "config",
-        global = true,
-        help = concat!("Path to a custom configuration file. If not specified, ", env!("CARGO_BIN_NAME"), " looks for a '.", env!("CARGO_BIN_NAME"), ".toml' file in the current working directory."),
-        value_name = "FILE",
-        value_hint = ValueHint::FilePath
-    )]
-    config_file: Option<PathBuf>,
-    #[arg(
-        long = "no-color",
-        global = true,
-        help = "Disable color output. This will prevent the application from using ANSI escape codes to format text and output.",
-        action = clap::ArgAction::SetTrue,
-        hide = true,
-    )]
-    no_color: bool,
-    #[arg(
-        long = "dotfiles",
-        global = true,
-        help = "Enable special handling for dotfiles by automatically renaming files with a specific prefix. For example, using the default 'dot-' prefix, a file named 'dot-bashrc' will be stowed as '.bashrc' in the target directory.",
-        value_name = "PREFIX",
-        default_missing_value = "dot-",
-        num_args = 0..=1
-    )]
-    dotfiles: Option<String>,
-    #[clap(flatten)]
-    logging_args: LoggingArgs,
 }
 
 #[derive(Parser)]
@@ -221,11 +253,7 @@ struct GlobalArgs {
 #[clap(rename_all = "snake_case")]
 pub struct CommandLineProcessor {
     #[clap(subcommand)]
-    process_command: Option<ProcessCommands>,
-    #[clap(flatten)]
-    global_args: GlobalArgs,
-    #[clap(flatten)]
-    stow_args: StowArgs,
+    process_command: ProcessCommands,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -296,81 +324,164 @@ impl CommandLineProcessor {
     /// ```
     pub fn get_cli_args() -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let cli_args = Self::try_parse()?;
-        if let Some(ProcessCommands::Completions { shell }) = cli_args.process_command {
-            return Err(CliError::PrintCompletions(CompletionPrinter::new(shell)));
+        match cli_args.process_command {
+            ProcessCommands::Stow { stow_args } => Self::stow(stow_args),
+            ProcessCommands::Delete { unstow_args } => Self::delete(unstow_args),
+            ProcessCommands::Restow { stow_args } => Self::restow(stow_args),
+            ProcessCommands::List { list_args } => Self::list(list_args),
+            ProcessCommands::Completions { shell } => Err(CliError::PrintCompletions(CompletionPrinter::new(shell))),
         }
+    }
 
-        let global = cli_args.global_args;
-        let stow_args = cli_args.stow_args;
-        let logging_args = global.logging_args;
-        let directories = stow_args.directory_args;
-        let process_command = cli_args.process_command.unwrap_or(ProcessCommands::Stow);
-        let directory = directories.source.map_or_else(
-            || Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))?,
-            |d| path_resolver::resolve_path(&d).map_err(CliError::from),
-        )?;
-
-        let config_file = match global.config_file {
-            Some(c) => Self::resolve_config_file(&c)?,
+    fn load_app_config(
+        directory: &Path,
+        global: &GlobalArgs,
+        ignored: HashSet<String>,
+        overrides: HashSet<String>,
+    ) -> Result<AppConfiguration, CliError> {
+        let config_file = match &global.config_file {
+            Some(c) => Self::resolve_config_file(c)?,
             None => directory.join(DEFAULT_CONFIG_FILE),
         };
 
-        let ignored = stow_args.ignored.into_iter().collect();
-        let config_file = if fs::exists(&config_file).unwrap_or(false) {
-            Some(&config_file)
+        let config_file_path = if fs::exists(&config_file).unwrap_or(false) {
+            Some(config_file.as_path())
         } else {
             None
         };
 
-        let overrides = stow_args.overrides.into_iter().collect();
         let app_config = AppConfiguration::load_configuration(
-            config_file.map(PathBuf::as_path),
-            &directory,
+            config_file_path,
+            directory,
             ignored,
             overrides,
             global.no_color,
         )?;
 
-        let guard = app_config.setup_logger(logging_args.log_level, logging_args.log_format)?;
-        let target = directories
+        Ok(app_config)
+    }
+
+    fn create_command(simulated: bool, app_config: &AppConfiguration) -> CommandBuilder<CommandOperationImpl> {
+        if simulated {
+            CommandBuilder::<CommandOperationImpl>::new().simulate(app_config.color_support())
+        } else {
+            CommandBuilder::new()
+        }
+    }
+
+    fn get_source(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
+        let directory = directory_args.source.as_ref().map_or_else(
+            || Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))?,
+            |d| path_resolver::resolve_path(d).map_err(CliError::from),
+        )?;
+
+        Ok(directory)
+    }
+
+    fn get_target(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
+        let target = directory_args
             .target
             .as_deref()
             .map_or_else(Self::get_default_target, |p| {
                 path_resolver::resolve_path(p).map_err(CliError::from)
             })?;
 
-        let mut builder = CommandBuilder::new()
-            .with_dot_file_prefix(global.dotfiles)
+        Ok(target)
+    }
+
+    fn stow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+        let directory = Self::get_source(&stow_args.directory)?;
+        let target = Self::get_target(&stow_args.directory)?;
+        let app_config = Self::load_app_config(
+            &directory,
+            &stow_args.global,
+            stow_args.ignored.into_iter().collect(),
+            stow_args.overrides.into_iter().collect(),
+        )?;
+
+        let guard = app_config.setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)?;
+
+        let command = Self::create_command(stow_args.simulate, &app_config)
+            .stow()
+            .with_dot_file_prefix(stow_args.directory.dotfiles)
+            .with_ignored(app_config.ignored)
+            .with_no_folding(stow_args.no_folding)
+            .with_overrides(app_config.overrides)
+            .with_target(target)
             .with_directory(directory)
-            .with_target(target);
+            .build()?;
 
-        builder = if global.simulate {
-            builder.simulate(app_config.color_support())
-        } else {
-            builder.command()
-        };
+        Ok(CliArgs::new(command, guard))
+    }
 
-        let command = match process_command {
-            ProcessCommands::Stow => builder
-                .stow()
-                .with_ignored(app_config.ignored)
-                .with_no_folding(stow_args.no_folding)
-                .with_overrides(app_config.overrides)
-                .build(),
-            ProcessCommands::Delete => builder.unstow().build(),
-            ProcessCommands::Restow => builder
-                .restow()
-                .with_ignored(app_config.ignored)
-                .with_no_folding(stow_args.no_folding)
-                .with_overrides(app_config.overrides)
-                .build(),
-            ProcessCommands::List => builder
-                .list()
-                .with_color_support(app_config.color_support())
-                .build(),
-            ProcessCommands::Completions { .. } => unreachable!(),
-        }?;
+    fn delete(unstow_args: UnstowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+        let directory = Self::get_source(&unstow_args.directory)?;
+        let target = Self::get_target(&unstow_args.directory)?;
+        let app_config = Self::load_app_config(
+            &directory,
+            &unstow_args.global,
+            HashSet::new(),
+            HashSet::new(),
+        )?;
 
+        let guard = app_config.setup_logger(
+            unstow_args.logging.log_level,
+            unstow_args.logging.log_format,
+        )?;
+        let command = Self::create_command(unstow_args.simulate, &app_config)
+            .unstow()
+            .with_dot_file_prefix(unstow_args.directory.dotfiles)
+            .with_target(target)
+            .with_directory(directory)
+            .build()?;
+
+        Ok(CliArgs::new(command, guard))
+    }
+
+    fn restow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+        let directory = Self::get_source(&stow_args.directory)?;
+        let target = Self::get_target(&stow_args.directory)?;
+        let app_config = Self::load_app_config(
+            &directory,
+            &stow_args.global,
+            stow_args.ignored.into_iter().collect(),
+            stow_args.overrides.into_iter().collect(),
+        )?;
+
+        let guard = app_config.setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)?;
+
+        let command = Self::create_command(stow_args.simulate, &app_config)
+            .restow()
+            .with_dot_file_prefix(stow_args.directory.dotfiles)
+            .with_ignored(app_config.ignored)
+            .with_no_folding(stow_args.no_folding)
+            .with_overrides(app_config.overrides)
+            .with_target(target)
+            .with_directory(directory)
+            .build()?;
+
+        Ok(CliArgs::new(command, guard))
+    }
+
+    fn list(list_args: ListArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+        let directory = Self::get_source(&list_args.directory)?;
+        let target = Self::get_target(&list_args.directory)?;
+        let app_config = Self::load_app_config(
+            &directory,
+            &list_args.global,
+            HashSet::new(),
+            HashSet::new(),
+        )?;
+
+        let guard = app_config.setup_logger(list_args.logging.log_level, list_args.logging.log_format)?;
+
+        let command = CommandBuilder::new()
+            .list()
+            .with_target(target)
+            .with_directory(directory)
+            .with_color_support(app_config.color_support())
+            .with_dot_file_prefix(list_args.directory.dotfiles)
+            .build()?;
         Ok(CliArgs::new(command, guard))
     }
 
