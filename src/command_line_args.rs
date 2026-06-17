@@ -58,7 +58,7 @@ struct DirectoryArgs {
         long = "directory",
         alias = "dir",
         visible_alias = "dir",
-        help = "Specify the source directory (stow directory) containing the packages to be managed. If not provided, it defaults to the current working directory.",
+        help = "Specify the source directory (stow directory) containing the packages to be managed.",
         value_name = "DIRECTORY",
         value_hint = ValueHint::DirPath
     )]
@@ -66,7 +66,7 @@ struct DirectoryArgs {
     #[arg(
         short = 't',
         long = "target",
-        help = "Specify the target directory where symbolic links will be created. By default, this is the parent of the source directory.",
+        help = "Specify the target directory where symbolic links will be created. By default, this is the parent of the current directory.",
         value_name = "DIRECTORY",
         value_hint = ValueHint::DirPath
     )]
