@@ -21,7 +21,6 @@ use crate::cli_args::CliArgs;
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_resolver};
 use clap::builder::Styles;
-use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Shell, generate};
 use std::collections::HashSet;
@@ -32,8 +31,6 @@ use tracing::level_filters::LevelFilter;
 
 const APP_NAME: &str = env!("CARGO_BIN_NAME");
 const STYLES: Styles = Styles::styled();
-const MISSING_DIRECTORY_ERROR: &str = "the following required arguments were not provided:
-  --directory <DIRECTORY>";
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
 struct GlobalArgs {
@@ -65,7 +62,7 @@ struct DirectoryArgs {
         value_name = "DIRECTORY",
         value_hint = ValueHint::DirPath
     )]
-    source: Option<PathBuf>,
+    source: PathBuf,
     #[arg(
         short = 't',
         long = "target",
@@ -370,11 +367,7 @@ impl CommandLineProcessor {
     }
 
     fn get_source(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
-        let directory = directory_args.source.as_ref().map_or_else(
-            || Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))?,
-            |d| path_resolver::resolve_path(d).map_err(CliError::from),
-        )?;
-
+        let directory = path_resolver::resolve_path(&directory_args.source)?;
         Ok(directory)
     }
 
