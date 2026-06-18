@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.0 (2026-06-17)
+
+### New Features
+
+ - <csr-id-d874e5c2a777ac745b2fd8fd625a7d0ced6ee663/> Cleaning up command line args
+   Moving source to a required argument via clap
+ - <csr-id-18810c50bac728163efebe28e0c93e3f9b557fe2/> Enabling fulling completions support
+
+### Bug Fixes
+
+ - <csr-id-96f53854d332df4bfcae1ee58ee4b7b8eb41a471/> Fixing help docs
+   Correcting issues with the help stating incorrect defaults
+
+### New Features (BREAKING)
+
+ - <csr-id-982275f8fb4d960f753881d888795252437f22a1/> Reworking commands to limit required arguments
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 2 calendar days.
+ - 2 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Fixing help docs ([`96f5385`](https://github.com/ChrisTisdale/graftfs/commit/96f53854d332df4bfcae1ee58ee4b7b8eb41a471))
+    - Cleaning up command line args ([`d874e5c`](https://github.com/ChrisTisdale/graftfs/commit/d874e5c2a777ac745b2fd8fd625a7d0ced6ee663))
+    - Reworking commands to limit required arguments ([`982275f`](https://github.com/ChrisTisdale/graftfs/commit/982275f8fb4d960f753881d888795252437f22a1))
+    - Enabling fulling completions support ([`18810c5`](https://github.com/ChrisTisdale/graftfs/commit/18810c50bac728163efebe28e0c93e3f9b557fe2))
+</details>
+
 ## v0.3.1 (2026-06-14)
 
 ### Bug Fixes
@@ -17,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -28,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release graftfs v0.3.1 ([`bbb6389`](https://github.com/ChrisTisdale/graftfs/commit/bbb6389b27869bd96f0df359f634f962a8430b85))
     - Fixing matching issues ([`4c3fde2`](https://github.com/ChrisTisdale/graftfs/commit/4c3fde2c8f650397012318ad509dc2afa12e8eea))
 </details>
 
