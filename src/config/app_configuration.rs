@@ -121,6 +121,7 @@ impl AppConfiguration {
         }
 
         config.logging.color_support = !no_color && config.logging.color_support;
+        config.color.enabled = !no_color && config.color.enabled;
         ignored.extend(Self::read_ignore_file(&config, config_file)?);
         overrides.extend(Self::read_override_file(&config)?);
         Ok(Self {
