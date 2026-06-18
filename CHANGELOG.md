@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.1 (2026-06-17)
+
+### Bug Fixes
+
+ - <csr-id-3266c11acc60d9c82d7313bad5c27dc6c88c1508/> Fixing no color support
+   Fixing an issue where no color commnad line argument was getting ignored
+   for writting to the console in simulator mode or list mode
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Fixing no color support ([`3266c11`](https://github.com/ChrisTisdale/graftfs/commit/3266c11acc60d9c82d7313bad5c27dc6c88c1508))
+</details>
+
 ## v0.4.0 (2026-06-17)
 
 ### New Features
@@ -26,8 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 2 calendar days.
- - 2 days passed between releases.
+ - 5 commits contributed to the release over the course of 3 calendar days.
+ - 3 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -38,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release graftfs v0.4.0 ([`ecfb95f`](https://github.com/ChrisTisdale/graftfs/commit/ecfb95f8a78ebf4fdea3ca23e09fc15b14822090))
     - Fixing help docs ([`96f5385`](https://github.com/ChrisTisdale/graftfs/commit/96f53854d332df4bfcae1ee58ee4b7b8eb41a471))
     - Cleaning up command line args ([`d874e5c`](https://github.com/ChrisTisdale/graftfs/commit/d874e5c2a777ac745b2fd8fd625a7d0ced6ee663))
     - Reworking commands to limit required arguments ([`982275f`](https://github.com/ChrisTisdale/graftfs/commit/982275f8fb4d960f753881d888795252437f22a1))
