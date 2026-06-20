@@ -13,6 +13,10 @@ keywords = ["dotfiles", "stow", "symlink", "configuration"]
 documentation = "https://docs.rs/graftfs"
 categories = ["command-line-utilities", "config", "filesystem"]
 publish = true
+exclude = [
+    "/.github/",
+    "/.gitignore",
+]
 
 [[bin]]
 name = "graft"

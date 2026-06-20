@@ -396,7 +396,7 @@ impl Iterator for DirectoryReader {
 }
 
 impl CommandOperation<DirectoryReader> for CommandOperationImpl {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(unix)]
     #[instrument(level = "trace")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
         match self {
@@ -442,7 +442,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         Ok(())
     }
 
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(unix)]
     #[instrument(level = "trace")]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
