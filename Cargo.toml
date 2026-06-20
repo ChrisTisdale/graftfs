@@ -1,6 +1,6 @@
 [package]
 name = "graftfs"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Chris Tisdale"]
 readme = "README.md"
 rust-version = "1.96.0"
