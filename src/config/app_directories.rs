@@ -21,7 +21,7 @@ use std::path::PathBuf;
 
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(unix)]
 const CONFIG_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
 #[cfg(target_os = "windows")]
@@ -30,13 +30,13 @@ const CONFIG_ENV_VAR: &str = "APPDATA";
 #[cfg(target_os = "macos")]
 const DEFAULT_CONFIG_PATH: &str = "~/Library/Application Support/";
 
-#[cfg(target_os = "linux")]
+#[cfg(all(unix, not(target_os = "macos")))]
 const DEFAULT_CONFIG_PATH: &str = "~/.config/";
 
 #[cfg(target_os = "windows")]
 const DEFAULT_CONFIG_PATH: &str = "~\\AppData\\Roaming";
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(unix)]
 const LOG_PATH_ENV_VAR: &str = "XDG_DATA_HOME";
 
 #[cfg(target_os = "windows")]
@@ -45,7 +45,7 @@ const LOG_PATH_ENV_VAR: &str = "LOCALAPPDATA";
 #[cfg(target_os = "macos")]
 const DEFAULT_LOG_PATH: &str = "~/Library/Application Support/";
 
-#[cfg(target_os = "linux")]
+#[cfg(all(unix, not(target_os = "macos")))]
 const DEFAULT_LOG_PATH: &str = "~/.local/share/";
 
 #[cfg(target_os = "windows")]
