@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.2 (2026-06-20)
+
+### New Features
+
+ - <csr-id-6e35b0cba3f37672fa633e7bce8e572f869eaacc/> Adding more OS support
+   Adding macos to the builds for actions.
+   
+   Moving support for configs for mac and linux into just unix for support
+   for other unix linux operating systems
+ - <csr-id-38377925bcb4191949d08334df7fb3f334cb13d7/> Support multiple packages
+   Allow for multiple packages to be stowed, listed, or unstowed in one
+   operation.
+
+### Bug Fixes
+
+ - <csr-id-d1183b716d237e642e4f0246ab98115ce08b555f/> More package cleanup
+   Fixing typo in exclude file list
+ - <csr-id-e6742878b01ab2fdf70b13009ddfb7d95c50a206/> Package cleanup
+   Removing files that are note needed when publishing
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release.
+ - 2 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#5](https://github.com/ChrisTisdale/graftfs/issues/5)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#5](https://github.com/ChrisTisdale/graftfs/issues/5)**
+    - Adding more OS support ([`6e35b0c`](https://github.com/ChrisTisdale/graftfs/commit/6e35b0cba3f37672fa633e7bce8e572f869eaacc))
+ * **Uncategorized**
+    - More package cleanup ([`d1183b7`](https://github.com/ChrisTisdale/graftfs/commit/d1183b716d237e642e4f0246ab98115ce08b555f))
+    - Package cleanup ([`e674287`](https://github.com/ChrisTisdale/graftfs/commit/e6742878b01ab2fdf70b13009ddfb7d95c50a206))
+    - Support multiple packages ([`3837792`](https://github.com/ChrisTisdale/graftfs/commit/38377925bcb4191949d08334df7fb3f334cb13d7))
+</details>
+
 ## v0.4.1 (2026-06-17)
 
 ### Bug Fixes
@@ -17,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -28,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release graftfs v0.4.1 ([`15d3bb7`](https://github.com/ChrisTisdale/graftfs/commit/15d3bb75bfe495f2594c8b32a4b3c0e04a42c0d0))
     - Fixing no color support ([`3266c11`](https://github.com/ChrisTisdale/graftfs/commit/3266c11acc60d9c82d7313bad5c27dc6c88c1508))
 </details>
 
