@@ -22,17 +22,17 @@ use tracing::instrument;
 #[derive(Debug)]
 pub struct UnstowData {
     pub(crate) target: PathBuf,
-    pub(crate) directory: PathBuf,
+    pub(crate) packages: Vec<PathBuf>,
     pub(crate) dot_file_prefix: Option<String>,
 }
 
 impl UnstowData {
     #[must_use]
     #[instrument(level = "trace")]
-    pub fn new(target: PathBuf, directory: PathBuf, dot_file_prefix: Option<String>) -> Self {
+    pub fn new(target: PathBuf, packages: Vec<PathBuf>, dot_file_prefix: Option<String>) -> Self {
         Self {
             target,
-            directory,
+            packages,
             dot_file_prefix,
         }
     }

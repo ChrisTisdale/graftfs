@@ -21,6 +21,7 @@ use crate::cli_args::CliArgs;
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_resolver};
 use clap::builder::Styles;
+use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Shell, generate};
 use std::collections::HashSet;
@@ -31,6 +32,9 @@ use tracing::level_filters::LevelFilter;
 
 const APP_NAME: &str = env!("CARGO_BIN_NAME");
 const STYLES: Styles = Styles::styled();
+const MISSING_DIRECTORY_ERROR: &str = r"Either the source directory or package name is required.  Please provide either of the following:
+  --directory <DIRECTORY>
+  --package <PACKAGE>";
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
 struct GlobalArgs {
@@ -62,7 +66,7 @@ struct DirectoryArgs {
         value_name = "DIRECTORY",
         value_hint = ValueHint::DirPath
     )]
-    source: PathBuf,
+    source: Option<PathBuf>,
     #[arg(
         short = 't',
         long = "target",
@@ -79,6 +83,13 @@ struct DirectoryArgs {
         num_args = 0..=1
     )]
     dotfiles: Option<String>,
+    #[arg(
+        short = 'p',
+        long = "package",
+        value_name = "PACKAGE",
+        help = "Specify a package name to unstow. This can be used multiple times to specify multiple packages."
+    )]
+    packages: Vec<String>,
 }
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
@@ -367,8 +378,19 @@ impl CommandLineProcessor {
     }
 
     fn get_source(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
-        let directory = path_resolver::resolve_path(&directory_args.source)?;
-        Ok(directory)
+        if directory_args.packages.is_empty() {
+            directory_args.source.as_ref().map_or_else(
+                || Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))?,
+                |d| path_resolver::resolve_path(d).map_err(CliError::from),
+            )
+        } else {
+            directory_args
+                .source
+                .as_ref()
+                .map_or_else(Self::get_default_source, |d| {
+                    path_resolver::resolve_path(d).map_err(CliError::from)
+                })
+        }
     }
 
     fn get_target(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
@@ -382,6 +404,20 @@ impl CommandLineProcessor {
         Ok(target)
     }
 
+    fn get_package_directories(source: &Path, packages: &[String]) -> Result<Vec<PathBuf>, CliError> {
+        if packages.is_empty() {
+            return Ok(vec![source.to_path_buf()]);
+        }
+
+        let mut package_directories = Vec::with_capacity(packages.len());
+        for package in packages {
+            let package_directory = source.join(package).canonicalize()?;
+            package_directories.push(package_directory);
+        }
+
+        Ok(package_directories)
+    }
+
     fn stow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let directory = Self::get_source(&stow_args.directory)?;
         let target = Self::get_target(&stow_args.directory)?;
@@ -393,7 +429,7 @@ impl CommandLineProcessor {
         )?;
 
         let guard = app_config.setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)?;
-
+        let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .stow()
             .with_dot_file_prefix(stow_args.directory.dotfiles)
@@ -401,7 +437,7 @@ impl CommandLineProcessor {
             .with_no_folding(stow_args.no_folding)
             .with_overrides(app_config.overrides)
             .with_target(target)
-            .with_directory(directory)
+            .with_packages(packages)
             .build()?;
 
         Ok(CliArgs::new(command, guard))
@@ -421,11 +457,13 @@ impl CommandLineProcessor {
             unstow_args.logging.log_level,
             unstow_args.logging.log_format,
         )?;
+
+        let packages = Self::get_package_directories(&directory, &unstow_args.directory.packages)?;
         let command = Self::create_command(unstow_args.simulate, &app_config)
             .unstow()
             .with_dot_file_prefix(unstow_args.directory.dotfiles)
             .with_target(target)
-            .with_directory(directory)
+            .with_packages(packages)
             .build()?;
 
         Ok(CliArgs::new(command, guard))
@@ -442,7 +480,7 @@ impl CommandLineProcessor {
         )?;
 
         let guard = app_config.setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)?;
-
+        let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .restow()
             .with_dot_file_prefix(stow_args.directory.dotfiles)
@@ -450,7 +488,7 @@ impl CommandLineProcessor {
             .with_no_folding(stow_args.no_folding)
             .with_overrides(app_config.overrides)
             .with_target(target)
-            .with_directory(directory)
+            .with_packages(packages)
             .build()?;
 
         Ok(CliArgs::new(command, guard))
@@ -467,11 +505,11 @@ impl CommandLineProcessor {
         )?;
 
         let guard = app_config.setup_logger(list_args.logging.log_level, list_args.logging.log_format)?;
-
+        let packages = Self::get_package_directories(&directory, &list_args.directory.packages)?;
         let command = CommandBuilder::new()
             .list()
             .with_target(target)
-            .with_directory(directory)
+            .with_packages(packages)
             .with_color_support(app_config.color_support())
             .with_dot_file_prefix(list_args.directory.dotfiles)
             .build()?;
@@ -493,11 +531,16 @@ impl CommandLineProcessor {
             })
     }
 
-    fn get_default_target() -> Result<PathBuf, CliError> {
+    fn get_default_source() -> Result<PathBuf, CliError> {
         let current_dir = env::current_dir().and_then(|p| p.canonicalize())?;
+        Ok(current_dir)
+    }
+
+    fn get_default_target() -> Result<PathBuf, CliError> {
+        let current_dir = env::current_dir()?;
         current_dir.parent().map_or_else(
             || Err(CliError::InvalidTargetDirectory),
-            |p| Ok(p.to_path_buf()),
+            |p| Ok(p.canonicalize()?),
         )
     }
 }

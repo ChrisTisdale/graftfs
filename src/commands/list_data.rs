@@ -23,7 +23,7 @@ use tracing::instrument;
 #[derive(Debug)]
 pub struct ListData {
     pub(crate) target: PathBuf,
-    pub(crate) directory: PathBuf,
+    pub(crate) packages: Vec<PathBuf>,
     pub(crate) dot_file_prefix: Option<String>,
     pub(crate) color_support: ColorSupport,
 }
@@ -33,13 +33,13 @@ impl ListData {
     #[instrument(level = "trace")]
     pub fn new(
         target: PathBuf,
-        directory: PathBuf,
+        packages: Vec<PathBuf>,
         dot_file_prefix: Option<String>,
         color_support: ColorSupport,
     ) -> Self {
         Self {
             target,
-            directory,
+            packages,
             dot_file_prefix,
             color_support,
         }

@@ -53,14 +53,14 @@ impl AsRef<StowData> for RestowData {
 impl RestowData {
     #[must_use]
     #[instrument(level = "trace")]
-    pub fn new(target: PathBuf, directory: PathBuf, options: StowOptions) -> Self {
+    pub fn new(target: PathBuf, packages: Vec<PathBuf>, options: StowOptions) -> Self {
         Self {
             unstow_data: UnstowData::new(
                 target.clone(),
-                directory.clone(),
+                packages.clone(),
                 options.dot_file_prefix.clone(),
             ),
-            stow_data: StowData::new(target, directory, options),
+            stow_data: StowData::new(target, packages, options),
         }
     }
 }

@@ -125,6 +125,11 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 }
 
+struct StowPackage<'a, TData> {
+    directory: &'a Path,
+    data: &'a TData,
+}
+
 impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>>
     Command<TIter, TCommand>
 {
@@ -173,34 +178,47 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn process_stow(args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
+        for package in &args.packages {
+            let stow_package = StowPackage {
+                directory: package,
+                data: args,
+            };
+
+            Self::process_stow_package(&stow_package, operation)?;
+        }
+
+        Ok(())
+    }
+
+    fn process_stow_package(package: &StowPackage<StowData>, operation: &mut TCommand) -> Result<(), CommandError> {
         info!(
             "Stowing files for {} to {}",
-            args.directory.display(),
-            args.target.display()
+            package.directory.display(),
+            package.data.target.display()
         );
 
-        if args.directory == args.target {
+        if package.directory == package.data.target {
             error!("Stow directory cannot be the same as the target directory");
             return Err(CommandError::InvalidStowDirectory(
-                args.directory.display().to_string(),
+                package.directory.display().to_string(),
             ));
         }
 
-        if !operation.is_directory(&args.target) {
+        if !operation.is_directory(&package.data.target) {
             error!("Target directory does not exist or is not a directory");
             return Err(CommandError::InvalidTargetDirectory(
-                args.target.display().to_string(),
+                package.data.target.display().to_string(),
             ));
         }
 
-        if !operation.is_directory(&args.directory) {
+        if !operation.is_directory(package.directory) {
             error!("Stow directory does not exist or is not a directory");
             return Err(CommandError::StowDirectoryNotFound(
-                args.directory.display().to_string(),
+                package.directory.display().to_string(),
             ));
         }
 
-        Self::process_directory_entry(&args.directory, &args.target, args, operation)?;
+        Self::process_directory_entry(package.directory, &package.data.target, package, operation)?;
         Ok(())
     }
 
@@ -260,11 +278,11 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     fn process_directory_entry(
         entry: &Path,
         target: &Path,
-        args: &StowData,
+        package: &StowPackage<StowData>,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
         trace!("Processing directory entry: {}", entry.display());
-        Self::process_directory(entry, target, args, operation, Self::stow_item)
+        Self::process_directory(entry, target, package, operation, Self::stow_item)
     }
 
     fn process_directory<TData, F>(
@@ -287,19 +305,24 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         Ok(())
     }
 
-    fn stow_item(item: &Path, target: &Path, args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
+    fn stow_item(
+        item: &Path,
+        target: &Path,
+        package: &StowPackage<StowData>,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
         trace!("Reviewing directory entry: {}", item.display());
-        if Self::is_ignored(item, &args.options.filter) {
+        if Self::is_ignored(item, &package.data.options.filter) {
             debug!("Ignoring item: {}", item.display());
             return Ok(());
         }
 
         let updated_root = item
-            .strip_prefix(&args.directory)
+            .strip_prefix(package.directory)
             .map(|p| Path::new("/").join(p));
 
         if let Ok(updated_root) = updated_root
-            && Self::is_ignored(&updated_root, &args.options.filter)
+            && Self::is_ignored(&updated_root, &package.data.options.filter)
         {
             debug!("Ignoring item: {}", item.display());
             return Ok(());
@@ -314,8 +337,8 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             return Err(CommandError::InvalidStowItem(item.display().to_string()));
         }
 
-        let no_folding = operation.is_directory(item) && args.options.no_folding;
-        let file_name = Self::get_item_name(item, args.options.dot_file_prefix.as_ref())?;
+        let no_folding = operation.is_directory(item) && package.data.options.no_folding;
+        let file_name = Self::get_item_name(item, package.data.options.dot_file_prefix.as_ref())?;
         let full_path = target.join(file_name);
         trace!(
             "Stowing directory entry: {}.  With no folding: {}",
@@ -324,11 +347,11 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         );
 
         if no_folding && !operation.exists(&full_path) {
-            return Self::process_fold(args, item, &full_path, operation);
+            return Self::process_fold(package, item, &full_path, operation);
         }
 
         if operation.exists(&full_path) {
-            return Self::handle_existing_item(item, args, &full_path, operation);
+            return Self::handle_existing_item(item, package, &full_path, operation);
         }
 
         operation.link_item(item, &full_path)?;
@@ -354,19 +377,19 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn process_fold(
-        args: &StowData,
+        package: &StowPackage<StowData>,
         entry_path: &Path,
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
         info!("Creating directory: {}", full_path.display());
         operation.create_directory(full_path)?;
-        Self::process_directory_entry(entry_path, full_path, args, operation)
+        Self::process_directory_entry(entry_path, full_path, package, operation)
     }
 
     fn handle_existing_item(
         item: &Path,
-        args: &StowData,
+        package: &StowPackage<StowData>,
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
@@ -380,10 +403,10 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
                 full_path.display()
             );
 
-            Self::process_directory_entry(&item, full_path, args, operation)?;
+            Self::process_directory_entry(&item, full_path, package, operation)?;
 
             Ok(())
-        } else if Self::should_override(full_path, &args.options.filter) && operation.is_file(full_path) {
+        } else if Self::should_override(full_path, &package.data.options.filter) && operation.is_file(full_path) {
             info!("Overriding existing file: {}", full_path.display());
             operation.remove_item(full_path)?;
             operation.link_item(&item, full_path)?;
@@ -402,24 +425,30 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn process_unstow(args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
-        info!(
-            "Unstowing files from {} to {}",
-            args.directory.display(),
-            args.target.display()
-        );
+        for package in &args.packages {
+            info!(
+                "Unstowing files from {} to {}",
+                package.display(),
+                args.target.display()
+            );
 
-        Self::unstow_directory_entry(&args.directory, &args.target, args, operation)?;
+            Self::unstow_directory_entry(package, &args.target, args, operation)?;
+        }
+
         Ok(())
     }
 
     fn process_list(args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
-        info!(
-            "Listing files from {} that are stowed in {}",
-            args.directory.display(),
-            args.target.display()
-        );
+        for package in &args.packages {
+            info!(
+                "Listing files from {} that are stowed in {}",
+                package.display(),
+                args.target.display()
+            );
 
-        Self::list_directory_entry(&args.directory, &args.target, args, operation)?;
+            Self::list_directory_entry(package, &args.target, args, operation)?;
+        }
+
         Ok(())
     }
 
@@ -525,7 +554,7 @@ mod tests {
     use std::collections::HashSet;
     use std::error::Error;
     use std::path::PathBuf;
-    use std::{env, fs};
+    use std::{env, fs, vec};
 
     struct StowSetup {
         setup_path: PathBuf,
@@ -563,7 +592,7 @@ mod tests {
         fn default_builder(&self) -> CommandBuilder<CommandOperationImpl> {
             CommandBuilder::<CommandOperationImpl>::new()
                 .with_target(self.setup_path.clone())
-                .with_directory(self.directory.clone())
+                .with_packages(vec![self.directory.clone()])
         }
     }
 
@@ -848,7 +877,7 @@ mod tests {
 
         let command = CommandBuilder::<CommandOperationImpl>::new()
             .with_target(target_path)
-            .with_directory(setup.directory.clone())
+            .with_packages(vec![setup.directory.clone()])
             .stow()
             .build();
         assert!(command.is_ok());
@@ -872,7 +901,7 @@ mod tests {
 
         let command = CommandBuilder::<CommandOperationImpl>::new()
             .with_target(setup.setup_path.clone())
-            .with_directory(stow_dir)
+            .with_packages(vec![stow_dir])
             .stow()
             .build();
         assert!(command.is_ok());
@@ -941,7 +970,7 @@ mod tests {
     #[test]
     fn missing_target_build_error_test() {
         let result = CommandBuilder::<CommandOperationImpl>::new()
-            .with_directory(PathBuf::from("/some/dir"))
+            .with_packages(vec![PathBuf::from("/some/dir")])
             .stow()
             .build();
 

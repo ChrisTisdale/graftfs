@@ -32,7 +32,7 @@ use std::path::PathBuf;
 #[derive(Default)]
 pub struct CommandBuilder<T: CommandOperation<DirectoryReader>> {
     target: Option<PathBuf>,
-    directory: Option<PathBuf>,
+    packages: Option<Vec<PathBuf>>,
     dot_file_prefix: Option<String>,
     operation: T,
 }
@@ -88,10 +88,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
         self
     }
 
-    /// Sets the stowed directory for the command.
+    /// Sets the stowed packages for the command.
     #[must_use]
-    pub fn with_directory(mut self, directory: PathBuf) -> Self {
-        self.directory = Some(directory);
+    pub fn with_packages(mut self, packages: Vec<PathBuf>) -> Self {
+        self.packages = Some(packages);
         self
     }
 
@@ -109,7 +109,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
     pub fn simulate(self, color_support: ColorSupport) -> CommandBuilder<CommandOperationImpl> {
         CommandBuilder::<CommandOperationImpl> {
             target: self.target,
-            directory: self.directory,
+            packages: self.packages,
             operation: CommandOperationImpl::Simulated(SimulatedData::default().with_color_support(color_support)),
             dot_file_prefix: self.dot_file_prefix,
         }
@@ -120,7 +120,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
     pub fn command(self) -> CommandBuilder<CommandOperationImpl> {
         CommandBuilder::<CommandOperationImpl> {
             target: self.target,
-            directory: self.directory,
+            packages: self.packages,
             operation: CommandOperationImpl::Default,
             dot_file_prefix: self.dot_file_prefix,
         }
@@ -176,10 +176,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
         self
     }
 
-    /// Sets the stowed directory for the unstow command.
+    /// Sets the stowed packages for the unstow command.
     #[must_use]
-    pub fn with_directory(mut self, directory: PathBuf) -> Self {
-        self.builder = self.builder.with_directory(directory);
+    pub fn with_packages(mut self, packages: Vec<PathBuf>) -> Self {
+        self.builder = self.builder.with_packages(packages);
         self
     }
 
@@ -224,7 +224,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
-    ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
+    ///     .with_packages(vec!{Path::new("/path/to/stow").to_path_buf()}])
     ///     .unstow()
     ///     .build();
     ///
@@ -244,7 +244,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
             .map_or_else(|| Err(CommandBuildError::MissingTargetDirectory), Ok)?;
         let directory = self
             .builder
-            .directory
+            .packages
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
 
         let data = UnstowData::new(target, directory, self.builder.dot_file_prefix);
@@ -278,10 +278,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
         self
     }
 
-    /// Sets the stowed directory for the stow command.
+    /// Sets the stowed packages for the stow command.
     #[must_use]
-    pub fn with_directory(mut self, directory: PathBuf) -> Self {
-        self.builder = self.builder.with_directory(directory);
+    pub fn with_packages(mut self, packages: Vec<PathBuf>) -> Self {
+        self.builder = self.builder.with_packages(packages);
         self
     }
 
@@ -363,7 +363,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
-    ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
+    ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .stow()
     ///     .build();
     ///
@@ -384,7 +384,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             .map_or_else(|| Err(CommandBuildError::MissingTargetDirectory), Ok)?;
         let directory = self
             .builder
-            .directory
+            .packages
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
         let stow_options = StowOptions::new(
             self.builder.dot_file_prefix,
@@ -424,10 +424,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
         self
     }
 
-    /// Sets the stowed directory for the restow command.
+    /// Sets the stowed packages for the restow command.
     #[must_use]
-    pub fn with_directory(mut self, directory: PathBuf) -> Self {
-        self.stow_command = self.stow_command.with_directory(directory);
+    pub fn with_packages(mut self, packages: Vec<PathBuf>) -> Self {
+        self.stow_command = self.stow_command.with_packages(packages);
         self
     }
 
@@ -503,7 +503,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
-    ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
+    ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .restow()
     ///     .build();
     ///
@@ -525,7 +525,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
             .map_or_else(|| Err(CommandBuildError::MissingTargetDirectory), Ok)?;
         let directory = cmd
             .builder
-            .directory
+            .packages
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
 
         let stow_options = StowOptions::new(
@@ -559,10 +559,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
         self
     }
 
-    /// Sets the stowed directory for the list command.
+    /// Sets the stowed packages for the list command.
     #[must_use]
-    pub fn with_directory(mut self, directory: PathBuf) -> Self {
-        self.builder = self.builder.with_directory(directory);
+    pub fn with_packages(mut self, packages: Vec<PathBuf>) -> Self {
+        self.builder = self.builder.with_packages(packages);
         self
     }
 
@@ -615,7 +615,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate()
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
-    ///     .with_directory(Path::new("/path/to/stow").to_path_buf())
+    ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .list()
     ///     .build();
     ///
@@ -635,7 +635,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
             .map_or_else(|| Err(CommandBuildError::MissingTargetDirectory), Ok)?;
         let directory = self
             .builder
-            .directory
+            .packages
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
 
         let data = ListData::new(

@@ -46,7 +46,7 @@ pub struct StowOptions {
 #[derive(Debug)]
 pub struct StowData {
     pub(crate) target: PathBuf,
-    pub(crate) directory: PathBuf,
+    pub(crate) packages: Vec<PathBuf>,
     pub(crate) options: StowOptions,
 }
 
@@ -87,10 +87,10 @@ impl StowOptions {
 impl StowData {
     #[must_use]
     #[instrument(level = "trace")]
-    pub fn new(target: PathBuf, directory: PathBuf, options: StowOptions) -> Self {
+    pub fn new(target: PathBuf, packages: Vec<PathBuf>, options: StowOptions) -> Self {
         Self {
             target,
-            directory,
+            packages,
             options,
         }
     }
