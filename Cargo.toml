@@ -16,6 +16,8 @@ publish = true
 exclude = [
     "/.github/",
     "/.gitignore",
+    "/.vscode/",
+    "./idea/",
 ]
 
 [[bin]]
