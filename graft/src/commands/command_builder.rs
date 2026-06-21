@@ -219,12 +219,12 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
-    ///     .simulate()
+    ///     .simulate(ColorSupport::None)
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
-    ///     .with_packages(vec!{Path::new("/path/to/stow").to_path_buf()}])
+    ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .unstow()
     ///     .build();
     ///
@@ -358,10 +358,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
-    ///     .simulate()
+    ///     .simulate(ColorSupport::None)
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .stow()
@@ -498,10 +498,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
-    ///     .simulate()
+    ///     .simulate(ColorSupport::None)
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .restow()
@@ -610,10 +610,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
-    ///     .simulate()
+    ///     .simulate(ColorSupport::None)
     ///     .with_target(Path::new("/path/to/target").to_path_buf())
     ///     .with_packages(vec![Path::new("/path/to/stow").to_path_buf()])
     ///     .list()

@@ -135,11 +135,11 @@
 //! ```
 //!
 
-mod cli_args;
-mod cli_errors;
-mod command_line_args;
-mod commands;
-mod config;
+pub mod cli_args;
+pub mod cli_errors;
+pub mod command_line_args;
+pub mod commands;
+pub mod config;
 
 use crate::cli_errors::CliError;
 use crate::command_line_args::CommandLineProcessor;

@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::level_filters::LevelFilter;
 
-const APP_NAME: &str = env!("CARGO_BIN_NAME");
+const APP_NAME: &str = "graft";
 const STYLES: Styles = Styles::styled();
 const MISSING_DIRECTORY_ERROR: &str = r"Either the source directory or package name is required.  Please provide either of the following:
   --directory <DIRECTORY>
@@ -48,7 +48,7 @@ struct GlobalArgs {
     #[arg(
         short = 'c',
         long = "config",
-        help = concat!("Path to a custom configuration file. If not specified, ", env!("CARGO_BIN_NAME"), " looks for a '.", env!("CARGO_BIN_NAME"), ".toml' file in the current working directory."),
+        help = "Path to a custom configuration file. If not specified, graft looks for a '.graft.toml' file in the current working directory.",
         value_name = "FILE",
         value_hint = ValueHint::FilePath
     )]
@@ -319,7 +319,8 @@ impl CommandLineProcessor {
     ///
     /// # Example
     /// ```
-    /// use command_line_args::{CliArgs, CommandLineProcessor};
+    /// use graft::command_line_args::{CommandLineProcessor};
+    /// use graft::cli_args::CliArgs;
     ///
     /// match CommandLineProcessor::get_cli_args() {
     ///     Ok(cli_args) => {

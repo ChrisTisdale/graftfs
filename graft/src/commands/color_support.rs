@@ -117,6 +117,7 @@ impl ColorSupport {
         );
     }
 
+    #[must_use]
     pub fn format_arrow_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),
@@ -124,6 +125,7 @@ impl ColorSupport {
         }
     }
 
+    #[must_use]
     pub fn format_source_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),
@@ -131,6 +133,7 @@ impl ColorSupport {
         }
     }
 
+    #[must_use]
     pub fn format_target_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),

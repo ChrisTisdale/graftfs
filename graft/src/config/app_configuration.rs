@@ -33,9 +33,9 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::{FmtSpan, Format};
 use tracing_subscriber::fmt::{FormatFields, SubscriberBuilder};
 
-pub const DEFAULT_CONFIG_FILE: &str = concat!(".", env!("CARGO_BIN_NAME"), ".toml");
+pub const DEFAULT_CONFIG_FILE: &str = ".graft.toml";
 
-const DEFAULT_LOG_FILE: &str = concat!(env!("CARGO_BIN_NAME"), "log");
+const DEFAULT_LOG_FILE: &str = "graft.log";
 
 const DEFAULT_IGNORE: &[&str] = &[
     "RCS",
@@ -94,11 +94,12 @@ impl AppConfiguration {
     /// ```
     /// use std::collections::HashSet;
     /// use std::error::Error;
-    /// use create::config::{AppConfiguration, ConfigError};
+    /// use graft::config::{AppConfiguration, ConfigError};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
-    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
+    ///
+    ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
     ///     Ok(())
     /// }
     /// ```
@@ -149,11 +150,12 @@ impl AppConfiguration {
     /// ```
     /// use std::collections::HashSet;
     /// use std::error::Error;
-    /// use create::config::{AppConfiguration, LoggingError};
+    /// use graft::config::{AppConfiguration, LoggingError};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
-    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
+    ///
+    ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
     ///     configuration.setup_logger(None, None)?;
     ///     Ok(())
     /// }
@@ -181,6 +183,7 @@ impl AppConfiguration {
             )
     }
 
+    #[must_use]
     pub fn color_support(&self) -> ColorSupport {
         if self.config.color.enabled && supports_color::on(Stream::Stdout).is_some() {
             ColorSupport::Colored(self.config.color.settings.clone())

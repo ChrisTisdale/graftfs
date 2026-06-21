@@ -75,14 +75,14 @@ pub struct CommandData<
 /// # Example
 /// ```
 /// use std::error::Error;
-/// use crate::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
+/// use graft::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
 ///     let directory = std::env::current_dir()?;
 ///     let parent = directory.parent().map(|p| p.to_path_buf());
 ///     if let Some(parent) = parent {
 ///         let builder = CommandBuilder::<CommandOperationImpl>::new()
-///             .with_directory(directory)
+///             .with_packages(vec![directory])
 ///             .with_target(parent)
 ///             .stow();
 ///         let command = builder.build()?;
@@ -150,14 +150,14 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     ///
     /// ```no_run
     /// use std::error::Error;
-    /// use crate::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
+    /// use graft::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let directory = std::env::current_dir()?;
     ///     let parent = directory.parent().map(|p| p.to_path_buf());
     ///     if let Some(parent) = parent {
     ///         let builder = CommandBuilder::<CommandOperationImpl>::new()
-    ///             .with_directory(directory)
+    ///             .with_packages(vec![directory])
     ///             .with_target(parent)
     ///             .stow();
     ///         let command = builder.build()?;
