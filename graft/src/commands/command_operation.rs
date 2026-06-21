@@ -46,7 +46,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Examples
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let mut instance = CommandOperationImpl::default();
     /// let result = instance.link_item(
@@ -86,7 +86,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Example
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let mut instance = CommandOperationImpl::default();
     /// let link_path = Path::new("/path/to/symlink");
@@ -120,7 +120,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Examples
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let mut instance = CommandOperationImpl::default();
     /// let path = Path::new("/path/to/item");
@@ -150,7 +150,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Examples
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let mut instance = CommandOperationImpl::default();
     /// let path = Path::new("/some/directory");
@@ -184,7 +184,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// ```
     /// use std::path::Path;
     /// use std::fs;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let instance = CommandOperationImpl::default();
     /// let path = Path::new("./example_directory");
@@ -205,7 +205,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Examples
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let instance = CommandOperationImpl::default();
     /// let file_path = Path::new("example.txt");
@@ -226,7 +226,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Example
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let instance = CommandOperationImpl::default();
     /// let path = Path::new("/some/path");
@@ -265,7 +265,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Examples
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let instance = CommandOperationImpl::default();
     /// let file_path = Path::new("example.txt");
@@ -292,7 +292,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let instance = CommandOperationImpl::default();
     /// let path = Path::new("/some/file/path");
@@ -319,7 +319,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// # Example
     /// ```
     /// use std::path::Path;
-    /// use crate::commands::{CommandOperation, CommandOperationImpl};
+    /// use graftfs::commands::{CommandOperation, CommandOperationImpl};
     ///
     /// let instance = CommandOperationImpl::default();
     /// let path = Path::new("/some/directory");

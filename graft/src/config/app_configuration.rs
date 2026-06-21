@@ -33,9 +33,9 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::{FmtSpan, Format};
 use tracing_subscriber::fmt::{FormatFields, SubscriberBuilder};
 
-pub const DEFAULT_CONFIG_FILE: &str = concat!(".", env!("CARGO_BIN_NAME"), ".toml");
+pub const DEFAULT_CONFIG_FILE: &str = concat!(".", "graft", ".toml");
 
-const DEFAULT_LOG_FILE: &str = concat!(env!("CARGO_BIN_NAME"), "log");
+const DEFAULT_LOG_FILE: &str = concat!("graft", "log");
 
 const DEFAULT_IGNORE: &[&str] = &[
     "RCS",
@@ -94,7 +94,7 @@ impl AppConfiguration {
     /// ```
     /// use std::collections::HashSet;
     /// use std::error::Error;
-    /// use create::config::{AppConfiguration, ConfigError};
+    /// use graftfs::config::{AppConfiguration, ConfigError};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
@@ -149,7 +149,7 @@ impl AppConfiguration {
     /// ```
     /// use std::collections::HashSet;
     /// use std::error::Error;
-    /// use create::config::{AppConfiguration, LoggingError};
+    /// use graftfs::config::{AppConfiguration, LoggingError};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
@@ -181,6 +181,7 @@ impl AppConfiguration {
             )
     }
 
+    #[must_use]
     pub fn color_support(&self) -> ColorSupport {
         if self.config.color.enabled && supports_color::on(Stream::Stdout).is_some() {
             ColorSupport::Colored(self.config.color.settings.clone())

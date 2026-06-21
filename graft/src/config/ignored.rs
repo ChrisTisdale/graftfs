@@ -21,28 +21,28 @@ use std::fmt::Display;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
-pub struct Overrides {
-    #[serde(default = "default_override_file")]
+pub struct Ignored {
+    #[serde(default = "default_ignored")]
     pub file: PathBuf,
     #[serde(default = "default_comment")]
     pub comment: char,
 }
 
-impl Display for Overrides {
+impl Display for Ignored {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Overrides {{ file: {}, comment: '{}' }}",
+            "Ignored {{ file: {}, comment: '{}' }}",
             self.file.display(),
             self.comment
         )
     }
 }
 
-impl Default for Overrides {
+impl Default for Ignored {
     fn default() -> Self {
         Self {
-            file: default_override_file(),
+            file: default_ignored(),
             comment: default_comment(),
         }
     }
@@ -52,6 +52,6 @@ const fn default_comment() -> char {
     '#'
 }
 
-fn default_override_file() -> PathBuf {
-    PathBuf::from(concat!(".", env!("CARGO_BIN_NAME"), "-overrides"))
+fn default_ignored() -> PathBuf {
+    PathBuf::from(concat!(".", "graft", "-ignore"))
 }

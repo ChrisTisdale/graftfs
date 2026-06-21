@@ -86,6 +86,39 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Creates a new `Config` object from a TOML file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path`: The path to the configuration file. If not provided, the default configuration file will be used.
+    ///
+    /// returns: Result<Config, `ConfigError`> - The configuration object.
+    ///
+    /// # Errors
+    ///
+    /// - `ConfigError::UnableToFindHomeDirectory`: This indicates that the home directory could not be found.
+    /// - `ConfigError::UnableToResolvePath`: This indicates that the provided path could not be resolved.
+    /// - `ConfigError::InvalidLoggingPath`: This indicates that the logging path is invalid.
+    /// - `ConfigError::InvalidLoggingFormat`: This indicates that the logging format is invalid.
+    /// - `ConfigError::InvalidLoggingRotation`: This indicates that the logging rotation is invalid.
+    /// - `ConfigError::InvalidLoggingLevel`: This indicates that the logging level is invalid.
+    /// - `ConfigError::InvalidColorSetting`: This indicates that the color setting is invalid.
+    /// - `ConfigError::InvalidColorSupport`: This indicates that the color support is invalid.
+    /// - `ConfigError::InvalidMaxLogFiles`: This indicates that the maximum number of log files is invalid.
+    /// - `ConfigError::InvalidIgnoredFile`: This indicates that the ignored file is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use graftfs::config::Config;
+    ///
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = Config::from_file(None)?;
+    ///
+    ///     println!("Config: {}", config);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn from_file(file_path: Option<&Path>) -> Result<Self, ConfigError> {
         let app_directories = AppDirectories::load_directories();
         if let Some(file_path) = file_path {

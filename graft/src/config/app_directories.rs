@@ -57,6 +57,7 @@ pub struct AppDirectories {
 }
 
 impl AppDirectories {
+    #[must_use]
     pub fn load_directories() -> Self {
         let config_dir = Self::get_config_directory();
         let log_dir = Self::get_log_directory();
