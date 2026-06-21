@@ -110,7 +110,7 @@ impl Config {
     /// # Examples
     ///
     /// ```
-    /// use graftfs::config::Config;
+    /// use graft::config::Config;
     ///
     /// fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let config = Config::from_file(None)?;

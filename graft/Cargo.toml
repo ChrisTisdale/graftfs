@@ -21,6 +21,10 @@ exclude = [
     "src/lib.rs",
 ]
 
+[lib]
+name = "graft"
+path = "src/lib.rs"
+
 [[bin]]
 name = "graft"
 path = "src/main.rs"

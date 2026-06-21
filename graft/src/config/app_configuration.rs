@@ -94,11 +94,12 @@ impl AppConfiguration {
     /// ```
     /// use std::collections::HashSet;
     /// use std::error::Error;
-    /// use graftfs::config::{AppConfiguration, ConfigError};
+    /// use graft::config::{AppConfiguration, ConfigError};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
-    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
+    ///
+    ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
     ///     Ok(())
     /// }
     /// ```
@@ -149,11 +150,12 @@ impl AppConfiguration {
     /// ```
     /// use std::collections::HashSet;
     /// use std::error::Error;
-    /// use graftfs::config::{AppConfiguration, LoggingError};
+    /// use graft::config::{AppConfiguration, LoggingError};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     use std::env;
-    /// let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
+    ///
+    ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
     ///     configuration.setup_logger(None, None)?;
     ///     Ok(())
     /// }

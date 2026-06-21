@@ -23,7 +23,7 @@ use std::{
 };
 
 use clap::CommandFactory;
-use graftfs::CommandLineProcessor;
+use graft::CommandLineProcessor;
 
 fn main() -> Result<(), anyhow::Error> {
     let task = env::args().nth(1);

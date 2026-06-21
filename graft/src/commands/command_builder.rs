@@ -219,7 +219,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use graftfs::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate(ColorSupport::None)
@@ -358,7 +358,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use graftfs::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate(ColorSupport::None)
@@ -498,7 +498,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use graftfs::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate(ColorSupport::None)
@@ -610,7 +610,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
     ///
     /// ```
     /// use std::path::Path;
-    /// use graftfs::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
+    /// use graft::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
     ///
     /// let command = CommandBuilder::<CommandOperationImpl>::new()
     ///     .simulate(ColorSupport::None)

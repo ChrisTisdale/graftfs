@@ -319,8 +319,8 @@ impl CommandLineProcessor {
     ///
     /// # Example
     /// ```
-    /// use graftfs::command_line_args::{CommandLineProcessor};
-    /// use graftfs::cli_args::CliArgs;
+    /// use graft::command_line_args::{CommandLineProcessor};
+    /// use graft::cli_args::CliArgs;
     ///
     /// match CommandLineProcessor::get_cli_args() {
     ///     Ok(cli_args) => {

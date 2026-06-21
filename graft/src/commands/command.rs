@@ -75,7 +75,7 @@ pub struct CommandData<
 /// # Example
 /// ```
 /// use std::error::Error;
-/// use graftfs::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
+/// use graft::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
 ///     let directory = std::env::current_dir()?;
@@ -150,7 +150,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     ///
     /// ```no_run
     /// use std::error::Error;
-    /// use graftfs::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
+    /// use graft::commands::{Command, CommandBuilder, CommandOperationImpl, CommandError, StowData, StowOptions};
     ///
     /// fn main() -> Result<(), Box<dyn Error>> {
     ///     let directory = std::env::current_dir()?;

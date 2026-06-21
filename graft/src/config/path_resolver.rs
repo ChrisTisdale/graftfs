@@ -48,7 +48,7 @@ use std::path::{Path, PathBuf};
 /// # Example
 /// ```rust
 /// use std::path::Path;
-/// use graftfs::config::path_resolver;
+/// use graft::config::path_resolver;
 ///
 /// let input_path = Path::new("~/example/path");
 /// match path_resolver::resolve_path(input_path) {
@@ -91,7 +91,7 @@ pub fn resolve_path(path: &Path) -> Result<PathBuf, ResolveError> {
 /// # Example
 /// ```rust
 /// use std::path::Path;
-/// use graftfs::config::path_resolver;
+/// use graft::config::path_resolver;
 ///
 /// let input_path = Path::new("~/example/path");
 /// match path_resolver::resolve_home_path(input_path) {
