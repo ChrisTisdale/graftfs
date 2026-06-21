@@ -48,7 +48,7 @@ struct GlobalArgs {
     #[arg(
         short = 'c',
         long = "config",
-        help = concat!("Path to a custom configuration file. If not specified, ", "graft", " looks for a '.", "graft", ".toml' file in the current working directory."),
+        help = "Path to a custom configuration file. If not specified, graft looks for a '.graft.toml' file in the current working directory.",
         value_name = "FILE",
         value_hint = ValueHint::FilePath
     )]

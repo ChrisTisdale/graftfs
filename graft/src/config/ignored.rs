@@ -53,5 +53,5 @@ const fn default_comment() -> char {
 }
 
 fn default_ignored() -> PathBuf {
-    PathBuf::from(concat!(".", "graft", "-ignore"))
+    PathBuf::from(".graft-ignore")
 }

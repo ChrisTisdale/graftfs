@@ -33,9 +33,9 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::{FmtSpan, Format};
 use tracing_subscriber::fmt::{FormatFields, SubscriberBuilder};
 
-pub const DEFAULT_CONFIG_FILE: &str = concat!(".", "graft", ".toml");
+pub const DEFAULT_CONFIG_FILE: &str = ".graft.toml";
 
-const DEFAULT_LOG_FILE: &str = concat!("graft", "log");
+const DEFAULT_LOG_FILE: &str = "graft.log";
 
 const DEFAULT_IGNORE: &[&str] = &[
     "RCS",

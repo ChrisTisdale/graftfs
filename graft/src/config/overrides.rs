@@ -53,5 +53,5 @@ const fn default_comment() -> char {
 }
 
 fn default_override_file() -> PathBuf {
-    PathBuf::from(concat!(".", "graft", "-overrides"))
+    PathBuf::from(".graft-overrides")
 }
