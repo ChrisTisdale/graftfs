@@ -46,4 +46,6 @@ pub enum CliError {
     ResolveError(#[from] crate::config::ResolveError),
     #[error("Printing completions requested.")]
     PrintCompletions(crate::command_line_args::CompletionPrinter),
+    #[error("Invalid or unknown shell.  Please specify a valid shell.")]
+    InvalidShell,
 }
