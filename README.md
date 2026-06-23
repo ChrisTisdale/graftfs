@@ -207,7 +207,7 @@ target = "Magenta"
 
 On MacOS, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_PATH is set, `$GRAFT_CONFIG_PATH/.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR/.graft.toml`
 - If XDG_CONFIG_HOME is set, `$XDG_CONFIG_HOME/graft/.graft.toml`
 - If XDG_CONFIG_HOME is not set, `~/Library/Application Support/graft/.graft.toml`
 
@@ -215,7 +215,7 @@ On MacOS, the configuration files will be located in the following locations:
 
 On Linux, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_PATH is set, `$GRAFT_CONFIG_PATH/.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR/.graft.toml`
 - If XDG_CONFIG_HOME is set, `$XDG_CONFIG_HOME/graft/.graft.toml`
 - If XDG_CONFIG_HOME is not set, `~/.config/graft/.graft.toml`
 
@@ -223,7 +223,7 @@ On Linux, the configuration files will be located in the following locations:
 
 On Windows, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_PATH is set, `$GRAFT_CONFIG_PATH\.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR\.graft.toml`
 - `%APPDATA%\graft\.graft.toml`
 
 ### Ignore Files
