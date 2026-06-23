@@ -165,6 +165,17 @@ struct UnstowArgs {
 }
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct CompletionArgs {
+    #[arg(
+        value_enum,
+        help = "The shell for which completions should be generated.",
+        value_name = "SHELL",
+        required = false
+    )]
+    shell: Option<Shell>,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
 struct ListArgs {
     #[clap(flatten)]
     logging: LoggingArgs,
@@ -183,10 +194,7 @@ enum ProcessCommands {
         flatten_help = true,
         about = "Stow packages into the target directory, creating symbolic links for each file."
     )]
-    Stow {
-        #[clap(flatten)]
-        stow_args: StowArgs,
-    },
+    Stow(#[clap(flatten)] StowArgs),
     #[command(
         short_flag = 'D',
         name = "delete",
@@ -197,10 +205,7 @@ enum ProcessCommands {
         flatten_help = true,
         about = "Remove symbolic links from the target directory that belong to the specified packages. This is useful for cleaning up after a package is no longer needed."
     )]
-    Delete {
-        #[clap(flatten)]
-        unstow_args: UnstowArgs,
-    },
+    Delete(#[clap(flatten)] UnstowArgs),
     #[command(
         short_flag = 'R',
         name = "restow",
@@ -208,10 +213,7 @@ enum ProcessCommands {
         flatten_help = true,
         about = "Restow packages by first removing their existing symbolic links and then re-stowing them. This is equivalent to running 'delete' followed by 'stow', and is useful for updating links after package contents change."
     )]
-    Restow {
-        #[clap(flatten)]
-        stow_args: StowArgs,
-    },
+    Restow(#[clap(flatten)] StowArgs),
     #[command(
         short_flag = 'L',
         name = "list",
@@ -219,23 +221,14 @@ enum ProcessCommands {
         flatten_help = true,
         about = "List all packages in the source directory along with their stow status (stowed, unstowed, or partially stowed). This provides an overview of which packages are currently active in the target directory."
     )]
-    List {
-        #[clap(flatten)]
-        list_args: ListArgs,
-    },
+    List(#[clap(flatten)] ListArgs),
     #[command(
         name = "completions",
         long_flag = "completions",
         flatten_help = true,
         about = "Generate shell completions for the stow command. This is useful for enhancing the user experience by providing auto-completion suggestions for command-line arguments."
     )]
-    Completions {
-        #[clap(
-            value_enum,
-            help = "The shell for which completions should be generated."
-        )]
-        shell: Shell,
-    },
+    Completions(#[clap(flatten)] CompletionArgs),
 }
 
 impl Display for ProcessCommands {
@@ -334,11 +327,11 @@ impl CommandLineProcessor {
     pub fn get_cli_args() -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let cli_args = Self::try_parse()?;
         match cli_args.process_command {
-            ProcessCommands::Stow { stow_args } => Self::stow(stow_args),
-            ProcessCommands::Delete { unstow_args } => Self::delete(unstow_args),
-            ProcessCommands::Restow { stow_args } => Self::restow(stow_args),
-            ProcessCommands::List { list_args } => Self::list(list_args),
-            ProcessCommands::Completions { shell } => Err(CliError::PrintCompletions(CompletionPrinter::new(shell))),
+            ProcessCommands::Stow(stow_args) => Self::stow(stow_args),
+            ProcessCommands::Delete(unstow_args) => Self::delete(unstow_args),
+            ProcessCommands::Restow(stow_args) => Self::restow(stow_args),
+            ProcessCommands::List(list_args) => Self::list(list_args),
+            ProcessCommands::Completions(completion_args) => Self::completions(&completion_args),
         }
     }
 
@@ -515,6 +508,14 @@ impl CommandLineProcessor {
             .with_dot_file_prefix(list_args.directory.dotfiles)
             .build()?;
         Ok(CliArgs::new(command, guard))
+    }
+
+    fn completions(completion_args: &CompletionArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+        let shell = completion_args
+            .shell
+            .map_or_else(|| Shell::from_env().ok_or(CliError::InvalidShell), Ok)?;
+
+        Err(CliError::PrintCompletions(CompletionPrinter::new(shell)))
     }
 
     fn resolve_config_file(path: &Path) -> Result<PathBuf, CliError> {
