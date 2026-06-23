@@ -223,7 +223,7 @@ On Linux, the configuration files will be located in the following locations:
 
 On Windows, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR\.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `%GRAFT_CONFIG_DIR%\.graft.toml`
 - `%APPDATA%\graft\.graft.toml`
 
 ### Ignore Files
