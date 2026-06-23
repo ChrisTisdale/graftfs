@@ -19,13 +19,15 @@
 use std::env;
 use std::path::PathBuf;
 
-const APP_NAME: &str = env!("CARGO_PKG_NAME");
+const APP_NAME: &str = "graft";
+
+const APP_CONFIG_ENV_VAR: &str = "GRAFT_CONFIG_DIR";
 
 #[cfg(unix)]
-const CONFIG_ENV_VAR: &str = "XDG_CONFIG_HOME";
+const SYSTEM_CONFIG_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
 #[cfg(target_os = "windows")]
-const CONFIG_ENV_VAR: &str = "APPDATA";
+const SYSTEM_CONFIG_ENV_VAR: &str = "APPDATA";
 
 #[cfg(target_os = "macos")]
 const DEFAULT_CONFIG_PATH: &str = "~/Library/Application Support/";
@@ -51,6 +53,7 @@ const DEFAULT_LOG_PATH: &str = "~/.local/share/";
 #[cfg(target_os = "windows")]
 const DEFAULT_LOG_PATH: &str = "~\\AppData\\Local";
 
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct AppDirectories {
     pub config_dir: PathBuf,
     pub log_dir: PathBuf,
@@ -68,7 +71,11 @@ impl AppDirectories {
     }
 
     fn get_config_directory() -> PathBuf {
-        env::var_os(CONFIG_ENV_VAR)
+        env::var_os(APP_CONFIG_ENV_VAR).map_or_else(Self::get_system_config_directory, |s| PathBuf::from(&s))
+    }
+
+    fn get_system_config_directory() -> PathBuf {
+        env::var_os(SYSTEM_CONFIG_ENV_VAR)
             .map_or_else(|| PathBuf::from(DEFAULT_CONFIG_PATH), |s| PathBuf::from(&s))
             .join(APP_NAME)
     }
