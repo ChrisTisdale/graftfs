@@ -16,13 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum CommandBuildError {
-    #[error("Missing target directory")]
+    #[snafu(display("Missing target directory"))]
     MissingTargetDirectory,
-    #[error("Missing stow directory")]
+    #[snafu(display("Missing stow directory"))]
     MissingStowDirectory,
 }

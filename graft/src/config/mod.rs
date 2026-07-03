@@ -33,6 +33,7 @@ mod resolve_error;
 mod rotation_error;
 mod version_error;
 
+use crate::config::config_error::{FileReadSnafu, ResolveSnafu, TomlSnafu};
 pub use app_configuration::{AppConfiguration, DEFAULT_CONFIG_FILE};
 pub use app_directories::AppDirectories;
 pub use color_config::{ColorConfig, ColorSettings};
@@ -45,6 +46,7 @@ pub use logging_error::LoggingError;
 pub use overrides::Overrides;
 pub use resolve_error::ResolveError;
 use serde::{Deserialize, Serialize};
+use snafu::ResultExt;
 use std::fmt::Display;
 use std::path::Path;
 use std::{env, fs};
@@ -136,10 +138,20 @@ impl Config {
     }
 
     fn read_config_file(file_path: &Path, app_directories: &AppDirectories) -> Result<Self, ConfigError> {
-        let content = fs::read_to_string(file_path)?;
-        let mut config = toml::from_str::<Self>(&content)?;
+        let content = fs::read_to_string(file_path).with_context(|_| FileReadSnafu {
+            file: file_path.display().to_string(),
+        })?;
+
+        let mut config = toml::from_str::<Self>(&content).with_context(|_| TomlSnafu {
+            file: file_path.display().to_string(),
+        })?;
+
         let home_dir = env::home_dir().ok_or(ConfigError::UnableToFindHomeDirectory)?;
-        config.ignored.file = path_resolver::resolve_home_path(&config.ignored.file)?;
+        config.ignored.file =
+            path_resolver::resolve_home_path(&config.ignored.file).with_context(|_| ResolveSnafu {
+                file: file_path.display().to_string(),
+            })?;
+
         if config.ignored.file.is_relative() {
             let parent_dir = file_path.parent().unwrap_or(home_dir.as_path());
             config.ignored.file = parent_dir.join(config.ignored.file);
@@ -147,13 +159,23 @@ impl Config {
 
         if let Some(file) = config.ignored.file.to_str() {
             let path = Path::new(file);
-            config.ignored.file = path_resolver::resolve_home_path(path)?;
+            config.ignored.file = path_resolver::resolve_home_path(path).with_context(|_| ResolveSnafu {
+                file: path.display().to_string(),
+            })?;
         }
 
         config.logging.logging_path = if let Some(path) = config.logging.logging_path {
-            Some(path_resolver::resolve_home_path(&path)?)
+            Some(
+                path_resolver::resolve_home_path(&path).with_context(|_| ResolveSnafu {
+                    file: path.display().to_string(),
+                })?,
+            )
         } else {
-            Some(path_resolver::resolve_home_path(&app_directories.log_dir)?)
+            Some(
+                path_resolver::resolve_home_path(&app_directories.log_dir).with_context(|_| ResolveSnafu {
+                    file: app_directories.log_dir.display().to_string(),
+                })?,
+            )
         };
 
         if let Some(path) = &config.logging.logging_path
@@ -165,7 +187,9 @@ impl Config {
 
         if let Some(file) = config.overrides.file.to_str() {
             let path = Path::new(file);
-            config.overrides.file = path_resolver::resolve_home_path(path)?;
+            config.overrides.file = path_resolver::resolve_home_path(path).with_context(|_| ResolveSnafu {
+                file: path.display().to_string(),
+            })?;
         }
 
         Ok(config)

@@ -50,7 +50,9 @@ impl FromStr for LoggingLevel {
             s if s.eq_ignore_ascii_case("info") => Ok(Self::Info),
             s if s.eq_ignore_ascii_case("warn") => Ok(Self::Warn),
             s if s.eq_ignore_ascii_case("error") => Ok(Self::Error),
-            _ => Err(LevelError::InvalidLevelString(s.to_string())),
+            _ => Err(LevelError::InvalidLevelString {
+                level: s.to_string(),
+            }),
         }
     }
 }
@@ -66,7 +68,7 @@ impl TryFrom<i64> for LoggingLevel {
             3 => Ok(Self::Info),
             4 => Ok(Self::Warn),
             5 => Ok(Self::Error),
-            _ => Err(LevelError::InvalidLevel(value)),
+            _ => Err(LevelError::InvalidLevel { level: value }),
         }
     }
 }
@@ -181,7 +183,9 @@ impl FromStr for RotationType {
         match s {
             s if s.eq_ignore_ascii_case("hourly") => Ok(Self::Hourly),
             s if s.eq_ignore_ascii_case("daily") => Ok(Self::Daily),
-            _ => Err(RotationError::InvalidRotationTypeString(s.to_string())),
+            _ => Err(RotationError::InvalidRotationTypeString {
+                rotation_type: s.to_string(),
+            }),
         }
     }
 }
@@ -193,7 +197,9 @@ impl TryFrom<i64> for RotationType {
         match value {
             1 => Ok(Self::Hourly),
             2 => Ok(Self::Daily),
-            _ => Err(RotationError::InvalidRotationType(value)),
+            _ => Err(RotationError::InvalidRotationType {
+                rotation_type: value,
+            }),
         }
     }
 }
@@ -267,7 +273,9 @@ impl FromStr for LoggingFormat {
             s if s.eq_ignore_ascii_case("compact") => Ok(Self::Compact),
             s if s.eq_ignore_ascii_case("pretty") => Ok(Self::Pretty),
             s if s.eq_ignore_ascii_case("json") => Ok(Self::Json),
-            _ => Err(FormatError::InvalidFormatTypeString(s.to_string())),
+            _ => Err(FormatError::InvalidFormatTypeString {
+                format: s.to_string(),
+            }),
         }
     }
 }
@@ -280,7 +288,7 @@ impl TryFrom<i64> for LoggingFormat {
             1 => Ok(Self::Compact),
             2 => Ok(Self::Pretty),
             3 => Ok(Self::Json),
-            _ => Err(FormatError::InvalidFormatType(value)),
+            _ => Err(FormatError::InvalidFormatType { format: value }),
         }
     }
 }
@@ -437,7 +445,7 @@ mod test {
     fn logging_level_from_str_invalid() {
         let result = LoggingLevel::from_str("invalid");
         match result {
-            Err(LevelError::InvalidLevelString(s)) => assert_eq!(s, "invalid"),
+            Err(LevelError::InvalidLevelString { level }) => assert_eq!(level, "invalid"),
             _ => panic!("Unexpected error type"),
         }
     }
@@ -482,7 +490,7 @@ mod test {
     fn logging_level_from_i64_invalid() {
         let result = LoggingLevel::try_from(-1);
         match result {
-            Err(LevelError::InvalidLevel(i)) => assert_eq!(i, -1),
+            Err(LevelError::InvalidLevel { level }) => assert_eq!(level, -1),
             _ => panic!("Unexpected error type"),
         }
     }
@@ -503,7 +511,7 @@ mod test {
     fn rotation_type_from_str_invalid() {
         let result = RotationType::from_str("invalid");
         match result {
-            Err(RotationError::InvalidRotationTypeString(s)) => assert_eq!(s, "invalid"),
+            Err(RotationError::InvalidRotationTypeString { rotation_type: s }) => assert_eq!(s, "invalid"),
             _ => panic!("Unexpected error type"),
         }
     }
@@ -524,7 +532,7 @@ mod test {
     fn invalid_rotation_type_from_i64() {
         let result = RotationType::try_from(-1);
         match result {
-            Err(RotationError::InvalidRotationType(i)) => assert_eq!(i, -1),
+            Err(RotationError::InvalidRotationType { rotation_type: i }) => assert_eq!(i, -1),
             _ => panic!("Unexpected error type"),
         }
     }

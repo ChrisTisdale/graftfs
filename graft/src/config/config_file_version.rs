@@ -42,7 +42,7 @@ impl TryFrom<i64> for ConfigFileVersion {
     fn try_from(value: i64) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(Self::V1),
-            _ => Err(VersionError::UnsupportedVersion(value)),
+            _ => Err(VersionError::UnsupportedVersion { version: value }),
         }
     }
 }
@@ -53,7 +53,9 @@ impl FromStr for ConfigFileVersion {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "1" | "v1" | "V1" => Ok(Self::V1),
-            _ => Err(VersionError::UnsupportedVersionString(s.to_string())),
+            _ => Err(VersionError::UnsupportedVersionString {
+                version: s.to_string(),
+            }),
         }
     }
 }
@@ -118,7 +120,7 @@ mod test {
     fn config_file_version_from_str_invalid() {
         let result = ConfigFileVersion::from_str("invalid");
         match result {
-            Err(VersionError::UnsupportedVersionString(s)) => assert_eq!(s, "invalid"),
+            Err(VersionError::UnsupportedVersionString { version: s }) => assert_eq!(s, "invalid"),
             _ => panic!("Unexpected error type"),
         }
     }
@@ -133,7 +135,7 @@ mod test {
     fn config_file_version_from_i64_invalid() {
         let result = ConfigFileVersion::try_from(-1);
         match result {
-            Err(VersionError::UnsupportedVersion(v)) => assert_eq!(v, -1),
+            Err(VersionError::UnsupportedVersion { version: v }) => assert_eq!(v, -1),
             _ => panic!("Unexpected error type"),
         }
     }

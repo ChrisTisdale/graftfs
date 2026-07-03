@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
 pub enum LevelError {
-    #[error("Invalid logging level: {0}")]
-    InvalidLevel(i64),
-    #[error("Invalid logging level: {0}")]
-    InvalidLevelString(String),
+    #[snafu(display("Invalid logging level: {}", level))]
+    InvalidLevel { level: i64 },
+    #[snafu(display("Invalid logging level: {}", level))]
+    InvalidLevelString { level: String },
 }

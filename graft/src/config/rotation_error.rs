@@ -16,13 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum RotationError {
-    #[error("Invalid rotation type: {0}")]
-    InvalidRotationType(i64),
-    #[error("Invalid rotation type: {0}")]
-    InvalidRotationTypeString(String),
+    #[snafu(display("Invalid rotation type: {}", rotation_type))]
+    InvalidRotationType { rotation_type: i64 },
+    #[snafu(display("Invalid rotation type: {}", rotation_type))]
+    InvalidRotationTypeString { rotation_type: String },
 }

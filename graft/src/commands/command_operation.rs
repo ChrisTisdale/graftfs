@@ -16,7 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::commands::command_error::{
+    CreateDirectorySnafu, DirectoryReadSnafu, DirectoryRemoveSnafu, FileRemoveSnafu, ReadLinkSnafu, SymLinkSnafu,
+};
 use crate::commands::{ColorSupport, CommandError};
+use snafu::ResultExt;
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 use std::{fs, os};
@@ -391,7 +395,7 @@ impl Iterator for DirectoryReader {
     fn next(&mut self) -> Option<Self::Item> {
         self.read_dir
             .next()
-            .map(|res| res.map_err(Into::into).map(|entry| entry.path()))
+            .map(|res| res.context(DirectoryReadSnafu).map(|entry| entry.path()))
     }
 }
 
@@ -402,7 +406,10 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         match self {
             Self::Default => {
                 info!("Linking {} {}", item.display(), target.display());
-                os::unix::fs::symlink(item, target)?;
+                os::unix::fs::symlink(item, target).with_context(|_| SymLinkSnafu {
+                    target: item.display().to_string(),
+                    destination: target.display().to_string(),
+                })?;
             }
             Self::Simulated(data) => {
                 data.created_links.push(LinkedDirectory {
@@ -424,9 +431,15 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
             Self::Default => {
                 info!("Linking {} {}", item.display(), target.display());
                 if self.is_directory(item) {
-                    os::windows::fs::symlink_dir(item, target)?;
+                    os::windows::fs::symlink_dir(item, target).with_context(|_| SymLinkSnafu {
+                        target: item.display().to_string(),
+                        destination: target.display().to_string(),
+                    })?;
                 } else {
-                    os::windows::fs::symlink_file(item, target)?;
+                    os::windows::fs::symlink_file(item, target).with_context(|_| SymLinkSnafu {
+                        target: item.display().to_string(),
+                        destination: target.display().to_string(),
+                    })?;
                 }
             }
             Self::Simulated(data) => {
@@ -453,7 +466,9 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         match self {
             Self::Default => {
                 debug!("Deleting symlink: {}", entry_path.display());
-                fs::remove_file(entry_path)?;
+                fs::remove_file(entry_path).with_context(|_| FileRemoveSnafu {
+                    file: entry_path.display().to_string(),
+                })?;
             }
             Self::Simulated(data) => {
                 data.color_support.print_unlink_text(entry_path);
@@ -475,9 +490,13 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
             Self::Default => {
                 debug!("Deleting symlink: {}", entry_path.display());
                 if self.is_directory(entry_path) {
-                    fs::remove_dir(entry_path)?;
+                    fs::remove_dir(entry_path).with_context(|_| DirectoryRemoveSnafu {
+                        directory: entry_path.display().to_string(),
+                    })?;
                 } else {
-                    fs::remove_file(entry_path)?;
+                    fs::remove_file(entry_path).with_context(|_| FileRemoveSnafu {
+                        file: entry_path.display().to_string(),
+                    })?;
                 }
             }
             Self::Simulated(data) => {
@@ -494,10 +513,14 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
             Self::Default => {
                 if self.is_directory(target) {
                     debug!("Deleting directory: {}", target.display());
-                    fs::remove_dir(target)?;
+                    fs::remove_dir(target).with_context(|_| DirectoryRemoveSnafu {
+                        directory: target.display().to_string(),
+                    })?;
                 } else {
                     debug!("Deleting file: {}", target.display());
-                    fs::remove_file(target)?;
+                    fs::remove_file(target).with_context(|_| FileRemoveSnafu {
+                        file: target.display().to_string(),
+                    })?;
                 }
             }
             Self::Simulated(data) => data.color_support.print_remove_text(target),
@@ -511,7 +534,9 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         match self {
             Self::Default => {
                 debug!("Creating directory: {}", target.display());
-                fs::create_dir_all(target)?;
+                fs::create_dir_all(target).with_context(|_| CreateDirectorySnafu {
+                    directory: target.display().to_string(),
+                })?;
             }
             Self::Simulated(data) => {
                 data.created_directories.push(target.to_owned());
@@ -546,7 +571,9 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     #[instrument(level = "trace")]
     fn read_link(&self, target: &Path) -> Result<PathBuf, CommandError> {
-        target.canonicalize().map_err(Into::into)
+        target.canonicalize().with_context(|_| ReadLinkSnafu {
+            path: target.display().to_string(),
+        })
     }
 
     #[instrument(level = "trace")]
@@ -569,6 +596,8 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     #[instrument(level = "trace")]
     fn read_directory(&self, target: &Path) -> Result<DirectoryReader, CommandError> {
-        fs::read_dir(target).map_err(Into::into).map(Into::into)
+        fs::read_dir(target)
+            .map(Into::into)
+            .context(DirectoryReadSnafu)
     }
 }

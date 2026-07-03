@@ -17,8 +17,11 @@
  */
 
 use crate::commands::ColorSupport;
+use crate::config::config_error::FileReadSnafu;
 use crate::config::logging_config::LoggingFormat;
+use crate::config::logging_error::LoggingSnafu;
 use crate::config::{Config, ConfigError, LoggingError};
+use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::io::stderr;
@@ -204,21 +207,21 @@ impl AppConfiguration {
                     .with_ansi(false)
                     .with_writer(appender)
                     .finish();
-                subscriber::set_global_default(subscriber)?;
+                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
             }
             LoggingFormat::Pretty => {
                 let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), config_level)
                     .with_ansi(false)
                     .with_writer(appender)
                     .finish();
-                subscriber::set_global_default(subscriber)?;
+                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
             }
             LoggingFormat::Json => {
                 let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), config_level)
                     .with_ansi(false)
                     .with_writer(appender)
                     .finish();
-                subscriber::set_global_default(subscriber)?;
+                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
             }
         }
 
@@ -237,21 +240,21 @@ impl AppConfiguration {
                     .with_ansi(color_support)
                     .with_writer(stderr)
                     .finish();
-                subscriber::set_global_default(subscriber)?;
+                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
             }
             LoggingFormat::Pretty => {
                 let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), config_level)
                     .with_ansi(color_support)
                     .with_writer(stderr)
                     .finish();
-                subscriber::set_global_default(subscriber)?;
+                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
             }
             LoggingFormat::Json => {
                 let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), config_level)
                     .with_ansi(color_support)
                     .with_writer(stderr)
                     .finish();
-                subscriber::set_global_default(subscriber)?;
+                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
             }
         }
 
@@ -300,7 +303,9 @@ impl AppConfiguration {
         comment: char,
         mut files: HashSet<String>,
     ) -> Result<HashSet<String>, ConfigError> {
-        let content = fs::read_to_string(file)?;
+        let content = fs::read_to_string(file).with_context(|_| FileReadSnafu {
+            file: file.display().to_string(),
+        })?;
         let items = content
             .lines()
             .filter(|line| !line.is_empty() && !line.starts_with(comment))

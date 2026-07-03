@@ -141,15 +141,17 @@ pub mod command_line_args;
 pub mod commands;
 pub mod config;
 
-use crate::cli_errors::CliError;
+use crate::cli_errors::{CliError, CommandSnafu};
 use crate::command_line_args::CommandLineProcessor;
+use snafu::ResultExt;
 use tracing::{info, trace};
 
+#[snafu::report]
 fn main() -> Result<(), CliError> {
     match process_command_line_args() {
         Ok(()) => Ok(()),
-        Err(CliError::PrintCompletions(printer)) => printer.print_completions(),
-        Err(CliError::CommandLineParsingError(source)) => source.exit(),
+        Err(CliError::PrintCompletions { printer }) => printer.print_completions(),
+        Err(CliError::CommandLineParsingError { source }) => source.exit(),
         Err(e) => Err(e),
     }
 }
@@ -159,7 +161,8 @@ fn process_command_line_args() -> Result<(), CliError> {
     trace!("Processed Commandline Arguments: {args}");
     let command = args.command;
     let command_text = format!("{command}");
-    command.execute()?;
+    command.execute().context(CommandSnafu)?;
+
     info!("Successfully processed command {command_text}");
     Ok(())
 }

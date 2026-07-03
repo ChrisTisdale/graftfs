@@ -16,12 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 use tracing::dispatcher::SetGlobalDefaultError;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum LoggingError {
-    #[error(transparent)]
-    LoggingError(#[from] SetGlobalDefaultError),
+    #[snafu(display("Error setting global default logger"))]
+    LoggingError { source: SetGlobalDefaultError },
 }

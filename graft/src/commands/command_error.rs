@@ -16,23 +16,65 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum CommandError {
-    #[error(transparent)]
-    InvalidPath(#[from] std::io::Error),
-    #[error("Invalid target directory: {0}.  The target directory must exist and be a directory.")]
-    InvalidTargetDirectory(String),
-    #[error("Invalid stow directory: {0}.  The stow directory must exist and be a directory.")]
-    StowDirectoryNotFound(String),
-    #[error("Invalid stow directory: {0}.  It must not be the same as the target directory.")]
-    InvalidStowDirectory(String),
-    #[error("Directory Entry Already Exists: {0}")]
-    DirectoryEntryAlreadyExists(String),
-    #[error(
-        "The stow directory contains an invalid item: {0}.  It must be a file or directory and not a symbolic link."
-    )]
-    InvalidStowItem(String),
+    #[snafu(display("Invalid path {}", path))]
+    InvalidPath {
+        path: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to create symlink from {} to {}", target, destination))]
+    SymLinkError {
+        target: String,
+        destination: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to read next item in the directory"))]
+    DirectoryReadError { source: std::io::Error },
+    #[snafu(display("Failed to remove file {}", file))]
+    FileRemoveError {
+        file: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to remove directory {}", directory))]
+    DirectoryRemoveError {
+        directory: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to create directory {}", directory))]
+    CreateDirectoryError {
+        directory: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to read link {}", path))]
+    ReadLinkError {
+        path: String,
+        source: std::io::Error,
+    },
+    #[snafu(display(
+        "Invalid target directory: {}.  The target directory must exist and be a directory.",
+        directory
+    ))]
+    InvalidTargetDirectory { directory: String },
+    #[snafu(display(
+        "Invalid stow directory: {}.  The stow directory must exist and be a directory.",
+        directory
+    ))]
+    StowDirectoryNotFound { directory: String },
+    #[snafu(display(
+        "Invalid stow directory: {}.  It must not be the same as the target directory.",
+        directory
+    ))]
+    InvalidStowDirectory { directory: String },
+    #[snafu(display("Directory Entry Already Exists: {}", directory))]
+    DirectoryEntryAlreadyExists { directory: String },
+    #[snafu(display(
+        "The stow directory contains an invalid item: {}.  It must be a file or directory and not a symbolic link.",
+        item
+    ))]
+    InvalidStowItem { item: String },
 }

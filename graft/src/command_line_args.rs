@@ -18,12 +18,16 @@
 
 use crate::CliError;
 use crate::cli_args::CliArgs;
+use crate::cli_errors::{
+    CommandBuildSnafu, CommandLineParsingSnafu, InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, ResolveSnafu,
+};
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_resolver};
 use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Shell, generate};
+use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -262,6 +266,12 @@ pub struct CompletionPrinter {
     shell: Shell,
 }
 
+impl Display for CompletionPrinter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.shell.to_string())
+    }
+}
+
 impl CompletionPrinter {
     const fn new(shell: Shell) -> Self {
         Self { shell }
@@ -325,7 +335,7 @@ impl CommandLineProcessor {
     /// }
     /// ```
     pub fn get_cli_args() -> Result<CliArgs<CommandOperationImpl>, CliError> {
-        let cli_args = Self::try_parse()?;
+        let cli_args = Self::try_parse().context(CommandLineParsingSnafu)?;
         match cli_args.process_command {
             ProcessCommands::Stow(stow_args) => Self::stow(stow_args),
             ProcessCommands::Delete(unstow_args) => Self::delete(unstow_args),
@@ -358,7 +368,13 @@ impl CommandLineProcessor {
             ignored,
             overrides,
             global.no_color,
-        )?;
+        )
+        .with_context(|_| InvalidConfigFileSnafu {
+            file: config_file_path.map_or_else(
+                || DEFAULT_CONFIG_FILE.to_string(),
+                |p| p.display().to_string(),
+            ),
+        })?;
 
         Ok(app_config)
     }
@@ -374,15 +390,24 @@ impl CommandLineProcessor {
     fn get_source(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
         if directory_args.packages.is_empty() {
             directory_args.source.as_ref().map_or_else(
-                || Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))?,
-                |d| path_resolver::resolve_path(d).map_err(CliError::from),
+                || {
+                    Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))
+                        .context(CommandLineParsingSnafu)?
+                },
+                |d| {
+                    path_resolver::resolve_path(d).with_context(|_| ResolveSnafu {
+                        file: d.display().to_string(),
+                    })
+                },
             )
         } else {
             directory_args
                 .source
                 .as_ref()
                 .map_or_else(Self::get_default_source, |d| {
-                    path_resolver::resolve_path(d).map_err(CliError::from)
+                    path_resolver::resolve_path(d).with_context(|_| ResolveSnafu {
+                        file: d.display().to_string(),
+                    })
                 })
         }
     }
@@ -392,7 +417,9 @@ impl CommandLineProcessor {
             .target
             .as_deref()
             .map_or_else(Self::get_default_target, |p| {
-                path_resolver::resolve_path(p).map_err(CliError::from)
+                path_resolver::resolve_path(p).with_context(|_| ResolveSnafu {
+                    file: p.display().to_string(),
+                })
             })?;
 
         Ok(target)
@@ -405,7 +432,10 @@ impl CommandLineProcessor {
 
         let mut package_directories = Vec::with_capacity(packages.len());
         for package in packages {
-            let package_directory = source.join(package).canonicalize()?;
+            let package_directory = source
+                .join(package)
+                .canonicalize()
+                .with_context(|_| InvalidPathSnafu { path: package })?;
             package_directories.push(package_directory);
         }
 
@@ -422,7 +452,10 @@ impl CommandLineProcessor {
             stow_args.overrides.into_iter().collect(),
         )?;
 
-        let guard = app_config.setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)?;
+        let guard = app_config
+            .setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)
+            .context(LoggingSnafu)?;
+
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .stow()
@@ -432,7 +465,8 @@ impl CommandLineProcessor {
             .with_overrides(app_config.overrides)
             .with_target(target)
             .with_packages(packages)
-            .build()?;
+            .build()
+            .with_context(|_| CommandBuildSnafu { command: "Stow" })?;
 
         Ok(CliArgs::new(command, guard))
     }
@@ -447,10 +481,12 @@ impl CommandLineProcessor {
             HashSet::new(),
         )?;
 
-        let guard = app_config.setup_logger(
-            unstow_args.logging.log_level,
-            unstow_args.logging.log_format,
-        )?;
+        let guard = app_config
+            .setup_logger(
+                unstow_args.logging.log_level,
+                unstow_args.logging.log_format,
+            )
+            .context(LoggingSnafu)?;
 
         let packages = Self::get_package_directories(&directory, &unstow_args.directory.packages)?;
         let command = Self::create_command(unstow_args.simulate, &app_config)
@@ -458,7 +494,8 @@ impl CommandLineProcessor {
             .with_dot_file_prefix(unstow_args.directory.dotfiles)
             .with_target(target)
             .with_packages(packages)
-            .build()?;
+            .build()
+            .with_context(|_| CommandBuildSnafu { command: "Unstow" })?;
 
         Ok(CliArgs::new(command, guard))
     }
@@ -473,7 +510,10 @@ impl CommandLineProcessor {
             stow_args.overrides.into_iter().collect(),
         )?;
 
-        let guard = app_config.setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)?;
+        let guard = app_config
+            .setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)
+            .context(LoggingSnafu)?;
+
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .restow()
@@ -483,7 +523,8 @@ impl CommandLineProcessor {
             .with_overrides(app_config.overrides)
             .with_target(target)
             .with_packages(packages)
-            .build()?;
+            .build()
+            .with_context(|_| CommandBuildSnafu { command: "Restow" })?;
 
         Ok(CliArgs::new(command, guard))
     }
@@ -498,7 +539,10 @@ impl CommandLineProcessor {
             HashSet::new(),
         )?;
 
-        let guard = app_config.setup_logger(list_args.logging.log_level, list_args.logging.log_format)?;
+        let guard = app_config
+            .setup_logger(list_args.logging.log_level, list_args.logging.log_format)
+            .context(LoggingSnafu)?;
+
         let packages = Self::get_package_directories(&directory, &list_args.directory.packages)?;
         let command = CommandBuilder::new()
             .list()
@@ -506,7 +550,8 @@ impl CommandLineProcessor {
             .with_packages(packages)
             .with_color_support(app_config.color_support())
             .with_dot_file_prefix(list_args.directory.dotfiles)
-            .build()?;
+            .build()
+            .with_context(|_| CommandBuildSnafu { command: "List" })?;
         Ok(CliArgs::new(command, guard))
     }
 
@@ -515,34 +560,54 @@ impl CommandLineProcessor {
             .shell
             .map_or_else(|| Shell::from_env().ok_or(CliError::InvalidShell), Ok)?;
 
-        Err(CliError::PrintCompletions(CompletionPrinter::new(shell)))
+        Err(CliError::PrintCompletions {
+            printer: CompletionPrinter::new(shell),
+        })
     }
 
     fn resolve_config_file(path: &Path) -> Result<PathBuf, CliError> {
         fs::metadata(path)
             .map(|m| m.is_file())
-            .map_err(|_| CliError::InvalidConfigurationFile(path.display().to_string()))
+            .map_err(|_| CliError::InvalidConfigurationFile {
+                file: path.display().to_string(),
+            })
             .and_then(|is_file| {
                 if is_file {
                     Ok(path.to_path_buf())
                 } else {
-                    Err(CliError::InvalidConfigurationFile(
-                        path.display().to_string(),
-                    ))
+                    Err(CliError::InvalidConfigurationFile {
+                        file: path.display().to_string(),
+                    })
                 }
             })
     }
 
     fn get_default_source() -> Result<PathBuf, CliError> {
-        let current_dir = env::current_dir().and_then(|p| p.canonicalize())?;
+        let current_dir = env::current_dir().with_context(|_| InvalidPathSnafu {
+            path: String::new(),
+        })?;
+
+        let current_dir = current_dir
+            .canonicalize()
+            .with_context(|_| InvalidPathSnafu {
+                path: current_dir.display().to_string(),
+            })?;
+
         Ok(current_dir)
     }
 
     fn get_default_target() -> Result<PathBuf, CliError> {
-        let current_dir = env::current_dir()?;
+        let current_dir = env::current_dir().with_context(|_| InvalidPathSnafu {
+            path: String::new(),
+        })?;
+
         current_dir.parent().map_or_else(
             || Err(CliError::InvalidTargetDirectory),
-            |p| Ok(p.canonicalize()?),
+            |p| {
+                p.canonicalize().with_context(|_| InvalidPathSnafu {
+                    path: p.display().to_string(),
+                })
+            },
         )
     }
 }

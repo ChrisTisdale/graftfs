@@ -16,13 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum FormatError {
-    #[error("Invalid format type: {0}")]
-    InvalidFormatType(i64),
-    #[error("Invalid format type: {0}")]
-    InvalidFormatTypeString(String),
+    #[snafu(display("Invalid format type: {}", format))]
+    InvalidFormatType { format: i64 },
+    #[snafu(display("Invalid format type: {}", format))]
+    InvalidFormatTypeString { format: String },
 }
