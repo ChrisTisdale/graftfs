@@ -22,8 +22,8 @@ use snafu::Snafu;
 #[non_exhaustive]
 #[snafu(visibility(pub))]
 pub enum RotationError {
-    #[snafu(display("Invalid rotation type: {}", rotation_type))]
+    #[snafu(display("Invalid rotation type: {rotation_type}"))]
     InvalidRotationType { rotation_type: i64 },
-    #[snafu(display("Invalid rotation type: {}", rotation_type))]
+    #[snafu(display("Invalid rotation type: {rotation_type}"))]
     InvalidRotationTypeString { rotation_type: String },
 }

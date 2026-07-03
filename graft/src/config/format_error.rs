@@ -22,8 +22,8 @@ use snafu::Snafu;
 #[non_exhaustive]
 #[snafu(visibility(pub))]
 pub enum FormatError {
-    #[snafu(display("Invalid format type: {}", format))]
+    #[snafu(display("Invalid format type: {format}"))]
     InvalidFormatType { format: i64 },
-    #[snafu(display("Invalid format type: {}", format))]
+    #[snafu(display("Invalid format type: {format}"))]
     InvalidFormatTypeString { format: String },
 }

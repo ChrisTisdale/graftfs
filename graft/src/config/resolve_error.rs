@@ -22,14 +22,14 @@ use snafu::Snafu;
 #[non_exhaustive]
 #[snafu(visibility(pub))]
 pub enum ResolveError {
-    #[snafu(display("Unable to canonicalize path {}", path))]
+    #[snafu(display("Unable to canonicalize path {path}"))]
     CanonicalizeError {
         path: String,
         source: std::io::Error,
     },
-    #[snafu(display("Unable to resolve directory: {}", directory))]
+    #[snafu(display("Unable to resolve directory: {directory}"))]
     UnableToResolveDirectory { directory: String },
-    #[snafu(display("Unable to strip prefix {} from {}", prefix, file))]
+    #[snafu(display("Unable to strip prefix {prefix} from {file}"))]
     StripPrefixError {
         prefix: String,
         file: String,

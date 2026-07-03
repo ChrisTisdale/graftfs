@@ -21,8 +21,8 @@ use snafu::Snafu;
 #[derive(Debug, Snafu)]
 #[non_exhaustive]
 pub enum LevelError {
-    #[snafu(display("Invalid logging level: {}", level))]
+    #[snafu(display("Invalid logging level: {level}"))]
     InvalidLevel { level: i64 },
-    #[snafu(display("Invalid logging level: {}", level))]
+    #[snafu(display("Invalid logging level: {level}"))]
     InvalidLevelString { level: String },
 }

@@ -22,8 +22,8 @@ use snafu::Snafu;
 #[non_exhaustive]
 #[snafu(visibility(pub))]
 pub enum VersionError {
-    #[snafu(display("Unsupported config file version: {}", version))]
+    #[snafu(display("Unsupported config file version: {version}"))]
     UnsupportedVersion { version: i64 },
-    #[snafu(display("Unsupported config file version: {}", version))]
+    #[snafu(display("Unsupported config file version: {version}"))]
     UnsupportedVersionString { version: String },
 }

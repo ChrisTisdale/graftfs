@@ -24,7 +24,7 @@ use snafu::Snafu;
 pub enum CliError {
     #[snafu(display("Failed to setup logging"))]
     LoggingError { source: crate::config::LoggingError },
-    #[snafu(display("Invalid path: {}", path))]
+    #[snafu(display("Invalid path: {path}"))]
     InvalidPath {
         path: String,
         source: std::io::Error,
@@ -33,7 +33,7 @@ pub enum CliError {
     CommandLineParsingError { source: clap::Error },
     #[snafu(display("Failed to parse command line arguments"))]
     MatchingError { source: clap::parser::MatchesError },
-    #[snafu(display("Invalid configuration file: {}", file))]
+    #[snafu(display("Invalid configuration file: {file}"))]
     InvalidConfigFile {
         file: String,
         source: crate::config::ConfigError,
@@ -44,20 +44,20 @@ pub enum CliError {
     },
     #[snafu(display("Invalid target directory.  The target directory must exist and be a directory."))]
     InvalidTargetDirectory,
-    #[snafu(display("Failed to strip path prefix {} from {}", prefix, item))]
+    #[snafu(display("Failed to strip path prefix {prefix} from {item}"))]
     StripPrefixError {
         prefix: String,
         item: String,
         source: std::path::StripPrefixError,
     },
-    #[snafu(display("Invalid configuration file: {}", file))]
+    #[snafu(display("Invalid configuration file: {file}"))]
     InvalidConfigurationFile { file: String },
-    #[snafu(display("Failed to build the request command {}", command))]
+    #[snafu(display("Failed to build the request command {command}"))]
     CommandBuildError {
         command: String,
         source: crate::commands::CommandBuildError,
     },
-    #[snafu(display("Failed to resolve the file {}", file))]
+    #[snafu(display("Failed to resolve the file {file}"))]
     ResolveError {
         file: String,
         source: crate::config::ResolveError,

@@ -22,18 +22,18 @@ use snafu::Snafu;
 #[non_exhaustive]
 #[snafu(visibility(pub))]
 pub enum ConfigError {
-    #[snafu(display("Failed to read file {}", file))]
+    #[snafu(display("Failed to read file {file}"))]
     FileReadError {
         file: String,
         source: std::io::Error,
     },
-    #[snafu(display("Failed to parse TOML file {}", file))]
+    #[snafu(display("Failed to parse TOML file {file}"))]
     TomlError {
         file: String,
         #[snafu(source(from(toml::de::Error, Box::new)))]
         source: Box<toml::de::Error>,
     },
-    #[snafu(display("Failed to strip path prefix {} from {}", prefix, item))]
+    #[snafu(display("Failed to strip path prefix {prefix} from {item}"))]
     StripPrefixError {
         prefix: String,
         item: String,
@@ -41,7 +41,7 @@ pub enum ConfigError {
     },
     #[snafu(display("Unable to find home directory"))]
     UnableToFindHomeDirectory,
-    #[snafu(display("Failed to resolve the file {}", file))]
+    #[snafu(display("Failed to resolve the file {file}"))]
     ResolveError {
         file: String,
         source: crate::config::ResolveError,
