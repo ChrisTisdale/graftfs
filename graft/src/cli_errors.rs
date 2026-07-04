@@ -44,12 +44,6 @@ pub enum CliError {
     },
     #[snafu(display("Invalid target directory.  The target directory must exist and be a directory."))]
     InvalidTargetDirectory,
-    #[snafu(display("Failed to strip path prefix {prefix} from {item}"))]
-    StripPrefixError {
-        prefix: String,
-        item: String,
-        source: std::path::StripPrefixError,
-    },
     #[snafu(display("Invalid configuration file: {file}"))]
     InvalidConfigurationFile { file: String },
     #[snafu(display("Failed to build the request command {command}"))]

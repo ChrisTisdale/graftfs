@@ -33,12 +33,6 @@ pub enum ConfigError {
         #[snafu(source(from(toml::de::Error, Box::new)))]
         source: Box<toml::de::Error>,
     },
-    #[snafu(display("Failed to strip path prefix {prefix} from {item}"))]
-    StripPrefixError {
-        prefix: String,
-        item: String,
-        source: std::path::StripPrefixError,
-    },
     #[snafu(display("Unable to find home directory"))]
     UnableToFindHomeDirectory,
     #[snafu(display("Failed to resolve the file {file}"))]
