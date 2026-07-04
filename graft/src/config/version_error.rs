@@ -16,13 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum VersionError {
-    #[error("Unsupported config file version: {0}")]
-    UnsupportedVersion(i64),
-    #[error("Unsupported config file version: {0}")]
-    UnsupportedVersionString(String),
+    #[snafu(display("Unsupported config file version: {version}"))]
+    UnsupportedVersion { version: i64 },
+    #[snafu(display("Unsupported config file version: {version}"))]
+    UnsupportedVersionString { version: String },
 }

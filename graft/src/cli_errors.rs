@@ -16,36 +16,50 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::fmt::Debug;
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum CliError {
-    #[error(transparent)]
-    LoggingError(#[from] crate::config::LoggingError),
-    #[error(transparent)]
-    InvalidPath(#[from] std::io::Error),
-    #[error(transparent)]
-    CommandLineParsingError(#[from] clap::Error),
-    #[error(transparent)]
-    MatchingError(#[from] clap::parser::MatchesError),
-    #[error(transparent)]
-    InvalidConfigFile(#[from] crate::config::ConfigError),
-    #[error(transparent)]
-    CommandError(#[from] crate::commands::CommandError),
-    #[error("Invalid target directory.  The target directory must exist and be a directory.")]
+    #[snafu(display("Failed to setup logging"))]
+    LoggingError { source: crate::config::LoggingError },
+    #[snafu(display("Invalid path: {path}"))]
+    InvalidPath {
+        path: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to parse command line arguments"))]
+    CommandLineParsingError { source: clap::Error },
+    #[snafu(display("Failed to parse command line arguments"))]
+    MatchingError { source: clap::parser::MatchesError },
+    #[snafu(display("Invalid configuration file: {file}"))]
+    InvalidConfigFile {
+        file: String,
+        source: crate::config::ConfigError,
+    },
+    #[snafu(display("Failed to handle the requested command"))]
+    CommandError {
+        source: crate::commands::CommandError,
+    },
+    #[snafu(display("Invalid target directory.  The target directory must exist and be a directory."))]
     InvalidTargetDirectory,
-    #[error(transparent)]
-    StripPrefixError(#[from] std::path::StripPrefixError),
-    #[error("Invalid configuration file: {0}")]
-    InvalidConfigurationFile(String),
-    #[error(transparent)]
-    CommandBuildError(#[from] crate::commands::CommandBuildError),
-    #[error(transparent)]
-    ResolveError(#[from] crate::config::ResolveError),
-    #[error("Printing completions requested.")]
-    PrintCompletions(crate::command_line_args::CompletionPrinter),
-    #[error("Invalid or unknown shell.  Please specify a valid shell.")]
+    #[snafu(display("Invalid configuration file: {file}"))]
+    InvalidConfigurationFile { file: String },
+    #[snafu(display("Failed to build the request command {command}"))]
+    CommandBuildError {
+        command: String,
+        source: crate::commands::CommandBuildError,
+    },
+    #[snafu(display("Failed to resolve the file {file}"))]
+    ResolveError {
+        file: String,
+        source: crate::config::ResolveError,
+    },
+    #[snafu(display("Printing completions requested."))]
+    PrintCompletions {
+        printer: crate::command_line_args::CompletionPrinter,
+    },
+    #[snafu(display("Invalid or unknown shell.  Please specify a valid shell."))]
     InvalidShell,
 }

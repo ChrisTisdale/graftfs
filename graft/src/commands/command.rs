@@ -16,9 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::commands::command_error::InvalidPathSnafu;
 use crate::commands::stow_data::StowFilter;
 use crate::commands::{CommandError, CommandOperation, ListData, RestowData, StowData, UnstowData};
 use grep::matcher::Matcher;
+use snafu::ResultExt;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -199,23 +201,23 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 
         if package.directory == package.data.target {
             error!("Stow directory cannot be the same as the target directory");
-            return Err(CommandError::InvalidStowDirectory(
-                package.directory.display().to_string(),
-            ));
+            return Err(CommandError::InvalidStowDirectory {
+                directory: package.directory.display().to_string(),
+            });
         }
 
         if !operation.is_directory(&package.data.target) {
             error!("Target directory does not exist or is not a directory");
-            return Err(CommandError::InvalidTargetDirectory(
-                package.data.target.display().to_string(),
-            ));
+            return Err(CommandError::InvalidTargetDirectory {
+                directory: package.data.target.display().to_string(),
+            });
         }
 
         if !operation.is_directory(package.directory) {
             error!("Stow directory does not exist or is not a directory");
-            return Err(CommandError::StowDirectoryNotFound(
-                package.directory.display().to_string(),
-            ));
+            return Err(CommandError::StowDirectoryNotFound {
+                directory: package.directory.display().to_string(),
+            });
         }
 
         Self::process_directory_entry(package.directory, &package.data.target, package, operation)?;
@@ -334,7 +336,9 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
                 item.display()
             );
 
-            return Err(CommandError::InvalidStowItem(item.display().to_string()));
+            return Err(CommandError::InvalidStowItem {
+                item: item.display().to_string(),
+            });
         }
 
         let no_folding = operation.is_directory(item) && package.data.options.no_folding;
@@ -360,7 +364,11 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 
     fn get_item_name(item: &Path, prefix: Option<&String>) -> Result<OsString, CommandError> {
         let file_name = item.file_name().map_or_else(
-            || Err(CommandError::InvalidStowItem(item.display().to_string())),
+            || {
+                Err(CommandError::InvalidStowItem {
+                    item: item.display().to_string(),
+                })
+            },
             Ok,
         )?;
 
@@ -393,7 +401,10 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        let item = item.canonicalize()?;
+        let item = item.canonicalize().with_context(|_| InvalidPathSnafu {
+            path: item.display().to_string(),
+        })?;
+
         if operation.is_symlink(full_path) && operation.read_link(full_path)? == item {
             info!("Skipping existing symlink: {}", full_path.display());
             Ok(())
@@ -415,12 +426,13 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         } else {
             warn!("File already exists: {}", full_path.display());
 
-            Err(CommandError::DirectoryEntryAlreadyExists(
-                item.file_name()
+            Err(CommandError::DirectoryEntryAlreadyExists {
+                directory: item
+                    .file_name()
                     .unwrap_or_else(|| OsStr::new("Unknown Name"))
-                    .to_string_lossy()
+                    .display()
                     .to_string(),
-            ))
+            })
         }
     }
 
@@ -467,7 +479,10 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         args: &UnstowData,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        let item = item.canonicalize()?;
+        let item = item.canonicalize().with_context(|_| InvalidPathSnafu {
+            path: item.display().to_string(),
+        })?;
+
         let item_name = Self::get_item_name(&item, args.dot_file_prefix.as_ref())?;
         let full_path = target.join(item_name);
 
@@ -501,7 +516,10 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn list_item(item: &Path, target: &Path, args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
-        let item = item.canonicalize().map_err(CommandError::from)?;
+        let item = item.canonicalize().with_context(|_| InvalidPathSnafu {
+            path: item.display().to_string(),
+        })?;
+
         let item_name = Self::get_item_name(&item, args.dot_file_prefix.as_ref())?;
         let full_path = target.join(item_name);
 
@@ -719,8 +737,8 @@ mod tests {
         let result = command.unwrap().execute();
         assert!(result.is_err());
         match result.unwrap_err() {
-            CommandError::DirectoryEntryAlreadyExists(path) => {
-                assert!(path.contains("conflict-file.txt"));
+            CommandError::DirectoryEntryAlreadyExists { directory } => {
+                assert!(directory.contains("conflict-file.txt"));
             }
             e => panic!("Expected DirectoryEntryAlreadyExists error, got {e:?}"),
         }
@@ -818,8 +836,8 @@ mod tests {
         let result = command.unwrap().execute();
         assert!(result.is_err());
         match result.unwrap_err() {
-            CommandError::DirectoryEntryAlreadyExists(name) => {
-                assert_eq!(name, "dir1");
+            CommandError::DirectoryEntryAlreadyExists { directory } => {
+                assert_eq!(directory, "dir1");
             }
             e => panic!("Expected DirectoryEntryAlreadyExists error, got {e:?}"),
         }
@@ -885,8 +903,8 @@ mod tests {
         let result = command.unwrap().execute();
         assert!(result.is_err());
         match result.unwrap_err() {
-            CommandError::InvalidTargetDirectory(path) => {
-                assert!(path.contains("non-existent-target"));
+            CommandError::InvalidTargetDirectory { directory } => {
+                assert!(directory.contains("non-existent-target"));
             }
             e => panic!("Expected InvalidTargetDirectory error, got {e:?}"),
         }
@@ -909,8 +927,8 @@ mod tests {
         let result = command.unwrap().execute();
         assert!(result.is_err());
         match result.unwrap_err() {
-            CommandError::StowDirectoryNotFound(path) => {
-                assert!(path.contains("non-existent-stow-dir"));
+            CommandError::StowDirectoryNotFound { directory } => {
+                assert!(directory.contains("non-existent-stow-dir"));
             }
             e => panic!("Expected StowDirectoryNotFound error, got {e:?}"),
         }
@@ -932,10 +950,10 @@ mod tests {
         let result = command.unwrap().execute();
         assert!(result.is_err());
         match result.unwrap_err() {
-            CommandError::InvalidStowDirectory(path) => {
+            CommandError::InvalidStowDirectory { directory } => {
                 let dir_str = setup.directory.to_str();
                 assert!(dir_str.is_some());
-                assert!(path.contains(dir_str.unwrap()));
+                assert!(directory.contains(dir_str.unwrap()));
             }
             e => panic!("Expected InvalidStowDirectory error, got {e:?}"),
         }
@@ -960,8 +978,8 @@ mod tests {
         let result = command.unwrap().execute();
         assert!(result.is_err());
         match result.unwrap_err() {
-            CommandError::InvalidTargetDirectory(path) => {
-                assert!(path.contains("target-file"));
+            CommandError::InvalidTargetDirectory { directory } => {
+                assert!(directory.contains("target-file"));
             }
             e => panic!("Expected InvalidTargetDirectory error, got {e:?}"),
         }

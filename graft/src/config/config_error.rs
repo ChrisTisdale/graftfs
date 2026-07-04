@@ -16,19 +16,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum ConfigError {
-    #[error(transparent)]
-    FileReadError(#[from] std::io::Error),
-    #[error(transparent)]
-    TomlError(#[from] toml::de::Error),
-    #[error(transparent)]
-    StripPrefixError(#[from] std::path::StripPrefixError),
-    #[error("Unable to find home directory")]
+    #[snafu(display("Failed to read file {file}"))]
+    FileReadError {
+        file: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to parse TOML file {file}"))]
+    TomlError {
+        file: String,
+        #[snafu(source(from(toml::de::Error, Box::new)))]
+        source: Box<toml::de::Error>,
+    },
+    #[snafu(display("Unable to find home directory"))]
     UnableToFindHomeDirectory,
-    #[error(transparent)]
-    ResolveError(#[from] crate::config::ResolveError),
+    #[snafu(display("Failed to resolve the file {file}"))]
+    ResolveError {
+        file: String,
+        source: crate::config::ResolveError,
+    },
 }

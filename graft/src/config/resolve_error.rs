@@ -16,15 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 #[non_exhaustive]
+#[snafu(visibility(pub))]
 pub enum ResolveError {
-    #[error(transparent)]
-    CanonicalizeError(#[from] std::io::Error),
-    #[error("Unable to resolve directory: {0}")]
-    UnableToResolveDirectory(String),
-    #[error(transparent)]
-    StripPrefixError(#[from] std::path::StripPrefixError),
+    #[snafu(display("Unable to canonicalize path {path}"))]
+    CanonicalizeError {
+        path: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Unable to resolve directory: {directory}"))]
+    UnableToResolveDirectory { directory: String },
+    #[snafu(display("Unable to strip prefix {prefix} from {file}"))]
+    StripPrefixError {
+        prefix: String,
+        file: String,
+        source: std::path::StripPrefixError,
+    },
 }

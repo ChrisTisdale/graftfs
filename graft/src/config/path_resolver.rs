@@ -17,6 +17,8 @@
  */
 
 use crate::config::ResolveError;
+use crate::config::resolve_error::{CanonicalizeSnafu, StripPrefixSnafu};
+use snafu::ResultExt;
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -58,14 +60,28 @@ use std::path::{Path, PathBuf};
 /// ```
 pub fn resolve_path(path: &Path) -> Result<PathBuf, ResolveError> {
     if !path.starts_with("~") {
-        let path = path.canonicalize()?;
+        let path = path.canonicalize().with_context(|_| CanonicalizeSnafu {
+            path: path.display().to_string(),
+        })?;
+
         return Ok(path);
     }
 
-    let home_dir = env::home_dir().ok_or_else(|| ResolveError::UnableToResolveDirectory(path.display().to_string()))?;
-    let path = path.strip_prefix("~")?;
+    let home_dir = env::home_dir().ok_or_else(|| ResolveError::UnableToResolveDirectory {
+        directory: path.display().to_string(),
+    })?;
+
+    let path = path.strip_prefix("~").with_context(|_| StripPrefixSnafu {
+        prefix: "~",
+        file: path.display().to_string(),
+    })?;
+
     let resolved_path = home_dir.join(path);
-    Ok(resolved_path.canonicalize()?)
+    resolved_path
+        .canonicalize()
+        .with_context(|_| CanonicalizeSnafu {
+            path: resolved_path.display().to_string(),
+        })
 }
 
 /// Builds a given file path, expanding the home directory (`~`) if necessary.
@@ -104,8 +120,15 @@ pub fn resolve_home_path(path: &Path) -> Result<PathBuf, ResolveError> {
         return Ok(path.to_path_buf());
     }
 
-    let home_dir = env::home_dir().ok_or_else(|| ResolveError::UnableToResolveDirectory(path.display().to_string()))?;
-    let path = path.strip_prefix("~")?;
+    let home_dir = env::home_dir().ok_or_else(|| ResolveError::UnableToResolveDirectory {
+        directory: path.display().to_string(),
+    })?;
+
+    let path = path.strip_prefix("~").with_context(|_| StripPrefixSnafu {
+        prefix: "~",
+        file: path.display().to_string(),
+    })?;
+
     let resolved_path = home_dir.join(path);
     Ok(resolved_path)
 }
