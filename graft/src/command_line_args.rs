@@ -19,17 +19,20 @@
 use crate::CliError;
 use crate::cli_args::CliArgs;
 use crate::cli_errors::{
-    CommandBuildSnafu, CommandLineParsingSnafu, InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, ResolveSnafu,
+    CommandBuildSnafu, CommandLineParsingSnafu, GenerateCompletionsSnafu, InvalidConfigFileSnafu, InvalidPathSnafu,
+    LoggingSnafu, OutputFileCreationSnafu, ResolveSnafu,
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_resolver};
 use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
-use clap_complete::{Shell, generate};
+use clap_complete::{Generator, Shell};
 use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing::level_filters::LevelFilter;
@@ -177,6 +180,14 @@ struct CompletionArgs {
         required = false
     )]
     shell: Option<Shell>,
+    #[arg(
+        short = 'o',
+        long = "output",
+        help = "Specify the output file for the completion script. If not provided, the script will be printed to stdout.",
+        value_name = "FILE",
+        required = false
+    )]
+    output: Option<PathBuf>,
 }
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
@@ -264,6 +275,7 @@ pub struct CommandLineProcessor {
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CompletionPrinter {
     shell: Shell,
+    output: Option<PathBuf>,
 }
 
 impl Display for CompletionPrinter {
@@ -273,22 +285,39 @@ impl Display for CompletionPrinter {
 }
 
 impl CompletionPrinter {
-    const fn new(shell: Shell) -> Self {
-        Self { shell }
+    const fn new(shell: Shell, output: Option<PathBuf>) -> Self {
+        Self { shell, output }
     }
 
     /// Prints completions for the given shell.
     ///
     /// This function generates completions for the specified shell and exits the program and will exit with a zero status code.
-    pub fn print_completions(&self) -> ! {
-        generate(
-            self.shell,
-            &mut CommandLineProcessor::command(),
-            APP_NAME,
-            &mut std::io::stdout(),
-        );
+    ///
+    /// # Errors
+    /// - Returns a `CliError` if the output file cannot be created.
+    ///
+    /// Returns an error if the output file cannot be created.
+    pub fn print_completions(&self) -> Result<(), CliError> {
+        if let Some(path) = &self.output {
+            let mut file = File::create(path).with_context(|_| OutputFileCreationSnafu {
+                path: path.display().to_string(),
+            })?;
+
+            self.generate_completions(&mut file)?;
+        } else {
+            self.generate_completions(&mut std::io::stdout())?;
+        }
 
         std::process::exit(0);
+    }
+
+    fn generate_completions<T: Write>(&self, writer: &mut T) -> Result<(), CliError> {
+        let mut command = CommandLineProcessor::command();
+        command.set_bin_name(APP_NAME);
+        command.build();
+        self.shell
+            .try_generate(&command, writer)
+            .context(GenerateCompletionsSnafu)
     }
 }
 
@@ -341,7 +370,7 @@ impl CommandLineProcessor {
             ProcessCommands::Delete(unstow_args) => Self::delete(unstow_args),
             ProcessCommands::Restow(stow_args) => Self::restow(stow_args),
             ProcessCommands::List(list_args) => Self::list(list_args),
-            ProcessCommands::Completions(completion_args) => Self::completions(&completion_args),
+            ProcessCommands::Completions(completion_args) => Self::completions(completion_args),
         }
     }
 
@@ -555,13 +584,13 @@ impl CommandLineProcessor {
         Ok(CliArgs::new(command, guard))
     }
 
-    fn completions(completion_args: &CompletionArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+    fn completions(completion_args: CompletionArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let shell = completion_args
             .shell
             .map_or_else(|| Shell::from_env().ok_or(CliError::InvalidShell), Ok)?;
 
         Err(CliError::PrintCompletions {
-            printer: CompletionPrinter::new(shell),
+            printer: CompletionPrinter::new(shell, completion_args.output),
         })
     }
 
