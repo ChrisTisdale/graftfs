@@ -62,4 +62,11 @@ pub enum CliError {
     },
     #[snafu(display("Invalid or unknown shell.  Please specify a valid shell."))]
     InvalidShell,
+    #[snafu(display("Failed to create output file {path}"))]
+    OutputFileCreationError {
+        path: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Failed to generate completions"))]
+    GenerateCompletionsError { source: std::io::Error },
 }
