@@ -24,13 +24,14 @@ use crate::cli_errors::{
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_resolver};
+use crate::shell::Shell;
 use clap::builder::Styles;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
-use clap_complete::{Generator, Shell};
+use clap_complete::Generator;
 use snafu::ResultExt;
 use std::collections::HashSet;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -247,7 +248,7 @@ enum ProcessCommands {
 }
 
 impl Display for ProcessCommands {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Stow { .. } => f.write_str("Stow"),
             Self::Delete { .. } => f.write_str("Delete"),
@@ -279,7 +280,7 @@ pub struct CompletionPrinter {
 }
 
 impl Display for CompletionPrinter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.shell.to_string())
     }
 }

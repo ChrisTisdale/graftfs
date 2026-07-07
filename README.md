@@ -123,6 +123,27 @@ Configure PowerShell completions by adding the following to your `$PROFILE` file
 graft completions powershell | Out-String | Invoke-Expression
 ```
 
+#### Nushell
+
+Nushell support can be enabled by enabling the nushell feature flag. To enable nushell support you need to install graft
+with the following command:
+
+```bash
+cargo install graftfs --feature nushell --locked
+```
+
+Configure Nushell completions by adding the following to your `~/.config/nushell/config.nu` file:
+
+```nu
+graft completions nu | save -f ($nu.default-config-dir | path join graft.nu)
+```
+
+Then in your config.nu
+
+```nu
+source graft.nu
+```
+
 ## Configuration
 
 `graft` can be configured using a `.graft.toml` file. It looks for this file in the current working directory or in the

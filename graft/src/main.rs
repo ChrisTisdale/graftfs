@@ -140,6 +140,8 @@ pub mod cli_errors;
 pub mod command_line_args;
 pub mod commands;
 pub mod config;
+pub mod shell;
+pub mod shell_converter_error;
 
 use crate::cli_errors::{CliError, CommandSnafu};
 use crate::command_line_args::CommandLineProcessor;

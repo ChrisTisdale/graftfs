@@ -16,22 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#[allow(unused)]
-pub mod cli_args;
-#[allow(unused)]
-pub mod cli_errors;
-#[allow(unused)]
-pub mod command_line_args;
-#[allow(unused)]
-pub mod commands;
-#[allow(unused)]
-pub mod config;
-#[allow(unused)]
-pub mod shell;
-#[allow(unused)]
-pub mod shell_converter_error;
+use snafu::Snafu;
 
-pub use crate::cli_errors::CliError;
-pub use crate::command_line_args::CommandLineProcessor;
-pub use crate::shell::Shell;
-pub use crate::shell_converter_error::ShellConverterError;
+#[derive(Debug, Snafu)]
+#[snafu(display("Failed to convert shell"))]
+pub struct ShellConverterError;
