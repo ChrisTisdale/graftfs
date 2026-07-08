@@ -16,46 +16,127 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use clap::builder::Styles;
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use graft::CommandLineProcessor;
 use std::{
     env, fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
-use clap::CommandFactory;
-use graft::CommandLineProcessor;
+const ALL_FEATURES: &str = "--all-features";
+const APP_NAME: &str = "xtask";
+const STYLES: Styles = Styles::styled();
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, ValueEnum)]
+enum Configuration {
+    #[default]
+    Release,
+    Debug,
+}
+
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+struct DistributeArgs {
+    #[clap(
+        short = 'f',
+        long = "feature",
+        help = "Features to enable when building the graft application"
+    )]
+    features: Vec<String>,
+    #[clap(
+        short = 'a',
+        long = "all-features",
+        help = "Enable all features when building the graft application",
+        conflicts_with = "features"
+    )]
+    all_features: bool,
+    #[clap(
+        short = 'c',
+        long = "configuration",
+        help = "Configuration to use when building the graft application",
+        default_value = "release"
+    )]
+    configuration: Configuration,
+    #[clap(
+        short = 'o',
+        long = "output",
+        help = "The output directory used for the generated binary and man pages.  If not specified, the target/dist directory at the root of the project will be used.  The directory will be deleted if it exists before building."
+    )]
+    output: Option<PathBuf>,
+}
+
+#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
+enum XCommands {
+    #[clap(name = "dist", about = "Builds application and man pages")]
+    Dist(#[clap(flatten)] DistributeArgs),
+}
+
+#[derive(Parser)]
+#[command(version, name = APP_NAME, about, author, propagate_version = true, styles = STYLES, help_template = "\
+{before-help}{name} {version}: {author-with-newline}
+{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}
+")]
+#[clap(rename_all = "snake_case")]
+struct XCommandLineArgs {
+    #[clap(subcommand)]
+    command: XCommands,
+}
 
 fn main() -> Result<(), anyhow::Error> {
-    let task = env::args().nth(1);
-    match task.as_deref() {
-        Some("dist") => dist()?,
-        _ => print_help(),
+    match process_command() {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            if let Some(e) = e.downcast_ref::<clap::Error>() {
+                e.exit()
+            }
+
+            Err(e)
+        }
     }
+}
 
+fn process_command() -> Result<(), anyhow::Error> {
+    let args = XCommandLineArgs::try_parse()?;
+    match args.command {
+        XCommands::Dist(args) => process_dist(args),
+    }
+}
+
+fn process_dist(args: DistributeArgs) -> Result<(), anyhow::Error> {
+    let output = args.output.map_or_else(default_dist_directory, Ok)?;
+
+    let mut additional_args = if args.all_features {
+        vec![ALL_FEATURES.to_string()]
+    } else {
+        args.features
+            .iter()
+            .map(|f| format!("--feature {f}"))
+            .collect()
+    };
+
+    let configuration = match args.configuration {
+        Configuration::Release => "--release",
+        Configuration::Debug => "--debug",
+    };
+
+    additional_args.push(configuration.to_string());
+    dist(additional_args, &output)
+}
+
+fn dist(additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Error> {
+    let _ = fs::remove_dir_all(out_dir);
+    fs::create_dir_all(out_dir)?;
+
+    dist_binary(additional_args, out_dir)?;
+    dist_manpage(out_dir)?;
     Ok(())
 }
 
-fn print_help() {
-    eprintln!(
-        "Tasks:
-
-dist            builds application and man pages
-"
-    );
-}
-
-fn dist() -> Result<(), anyhow::Error> {
-    let out_dir = dist_dir()?;
-    let _ = fs::remove_dir_all(&out_dir);
-    fs::create_dir_all(&out_dir)?;
-
-    dist_binary()?;
-    dist_manpage()?;
-    Ok(())
-}
-
-fn dist_manpage() -> Result<(), anyhow::Error> {
-    let out_dir = dist_dir()?;
+fn dist_manpage(out_dir: &Path) -> Result<(), anyhow::Error> {
     let cmd = CommandLineProcessor::command();
     let man = clap_mangen::Man::new(cmd);
 
@@ -67,15 +148,14 @@ fn dist_manpage() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn dist_binary() -> Result<(), anyhow::Error> {
+fn dist_binary(mut additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Error> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let root = project_root()?;
-    let out_dir = dist_dir()?;
-    let status = Command::new(cargo)
-        .current_dir(&root)
-        .args(["build", "--release"])
-        .status()?;
 
+    let mut args = vec!["build".to_string()];
+    args.append(&mut additional_args);
+
+    let status = Command::new(cargo).current_dir(&root).args(args).status()?;
     if !status.success() {
         return Err(anyhow::Error::msg("cargo build failed"));
     }
@@ -112,6 +192,6 @@ fn project_root() -> Result<PathBuf, anyhow::Error> {
         .ok_or_else(|| anyhow::Error::msg("could not find project root"))
 }
 
-fn dist_dir() -> Result<PathBuf, anyhow::Error> {
+fn default_dist_directory() -> Result<PathBuf, anyhow::Error> {
     project_root().map(|p| p.join("target/dist"))
 }
