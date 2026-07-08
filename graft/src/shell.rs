@@ -24,7 +24,7 @@ use std::fmt::{Display, Formatter};
 use std::io::{Error, Write};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-
+#[allow(clippy::enum_variant_names)]
 pub enum Shell {
     Bash,
     Fish,
