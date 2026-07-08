@@ -131,13 +131,41 @@ fn dist(additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Erro
     let _ = fs::remove_dir_all(out_dir);
     fs::create_dir_all(out_dir)?;
 
+    let with_nushell = additional_args
+        .iter()
+        .any(|a| a.ends_with(" nushell") || a.eq(ALL_FEATURES));
     dist_binary(additional_args, out_dir)?;
-    dist_manpage(out_dir)?;
+    dist_manpage(out_dir, with_nushell)?;
     Ok(())
 }
 
-fn dist_manpage(out_dir: &Path) -> Result<(), anyhow::Error> {
+#[derive(Clone, Copy, ValueEnum)]
+#[allow(clippy::enum_variant_names)]
+enum Shell {
+    Bash,
+    Fish,
+    Elvish,
+    PowerShell,
+    Zsh,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+#[allow(clippy::enum_variant_names)]
+enum ShelWithNusehll {
+    Bash,
+    Fish,
+    Elvish,
+    PowerShell,
+    Zsh,
+    Nushell,
+}
+
+fn dist_manpage(out_dir: &Path, with_nushell: bool) -> Result<(), anyhow::Error> {
     let cmd = CommandLineProcessor::command();
+    for cmd in cmd.get_subcommands() {
+        render_subcommand(cmd, out_dir, with_nushell)?;
+    }
+
     let man = clap_mangen::Man::new(cmd);
 
     let mut buffer: Vec<u8> = Vec::default();
@@ -145,6 +173,36 @@ fn dist_manpage(out_dir: &Path) -> Result<(), anyhow::Error> {
 
     fs::write(out_dir.join("graft.1"), buffer)?;
 
+    Ok(())
+}
+
+fn render_subcommand(cmd: &clap::Command, out_dir: &Path, with_nushell: bool) -> Result<(), anyhow::Error> {
+    let name = cmd.get_name().to_string();
+    let mut cmd = cmd.clone();
+    if name.eq_ignore_ascii_case("completions") {
+        let args = cmd.get_arguments().cloned().collect::<Vec<_>>();
+        let mut temp = clap::Command::new("completions");
+        for mut arg in args {
+            if arg.get_id().as_str().eq_ignore_ascii_case("shell") {
+                if with_nushell {
+                    arg = arg.value_parser(clap::value_parser!(ShelWithNusehll));
+                } else {
+                    arg = arg.value_parser(clap::value_parser!(Shell));
+                }
+            }
+
+            temp = temp.arg(arg);
+        }
+
+        cmd = temp;
+    }
+
+    let man = clap_mangen::Man::new(cmd);
+
+    let mut buffer: Vec<u8> = Vec::default();
+    man.render(&mut buffer)?;
+
+    fs::write(out_dir.join(format!("graft-{name}.1")), buffer)?;
     Ok(())
 }
 
