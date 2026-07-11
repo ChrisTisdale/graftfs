@@ -16,11 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::commands::command_error::InvalidPathSnafu;
+use crate::commands::command_error::{ChangeDirectorySnafu, InvalidPathSnafu};
 use crate::commands::stow_data::StowFilter;
 use crate::commands::{CommandError, CommandOperation, ListData, RestowData, StowData, UnstowData};
+use crate::config::LinkingStrategy;
+use crate::config::path_resolver::path_relative_from;
 use grep::matcher::Matcher;
 use snafu::ResultExt;
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -130,6 +133,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 struct StowPackage<'a, TData> {
     directory: &'a Path,
     data: &'a TData,
+    stow_root: &'a Path,
 }
 
 impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>>
@@ -180,10 +184,23 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 
     fn process_stow(args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
+        if !operation.is_directory(&args.target) {
+            error!("Target directory does not exist or is not a directory");
+            return Err(CommandError::InvalidTargetDirectory {
+                directory: args.target.display().to_string(),
+            });
+        }
+
+        debug!("Changing directory to {}", args.target.display());
+        env::set_current_dir(&args.target).with_context(|_| ChangeDirectorySnafu {
+            directory: args.target.display().to_string(),
+        })?;
+
         for package in &args.packages {
             let stow_package = StowPackage {
                 directory: package,
                 data: args,
+                stow_root: &args.target,
             };
 
             Self::process_stow_package(&stow_package, operation)?;
@@ -358,7 +375,15 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             return Self::handle_existing_item(item, package, &full_path, operation);
         }
 
-        operation.link_item(item, &full_path)?;
+        match package.data.options.linking_strategy {
+            LinkingStrategy::Short => {
+                let source = path_relative_from(item, target).unwrap_or_else(|| item.to_path_buf());
+                let target = path_relative_from(&full_path, package.stow_root).unwrap_or(full_path);
+                operation.link_item(&source, &target)?;
+            }
+            LinkingStrategy::Full => operation.link_item(item, &full_path)?,
+        }
+
         Ok(())
     }
 
@@ -572,11 +597,15 @@ mod tests {
     use std::collections::HashSet;
     use std::error::Error;
     use std::path::PathBuf;
+    use std::sync::{LazyLock, Mutex, MutexGuard};
     use std::{env, fs, vec};
+
+    static TEST_SYNC: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     struct StowSetup {
         setup_path: PathBuf,
         directory: PathBuf,
+        _guard: MutexGuard<'static, ()>,
     }
 
     impl StowSetup {
@@ -586,6 +615,7 @@ mod tests {
 
         fn new_with_data(scratch_name: &str, test_data_name: &str) -> Result<Self, Box<dyn Error>> {
             let project_root = env::var("CARGO_MANIFEST_DIR")?;
+
             let setup_path = PathBuf::from(&project_root)
                 .join("test_data")
                 .join("scratch")
@@ -601,9 +631,12 @@ mod tests {
                 fs::create_dir_all(&setup_path)?;
             }
 
+            let guard = TEST_SYNC.lock()?;
+
             Ok(Self {
                 setup_path,
                 directory,
+                _guard: guard,
             })
         }
 
@@ -638,9 +671,7 @@ mod tests {
 
     #[test]
     fn existing_directory_test() {
-        let setup = StowSetup::new("existing_directory_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("existing_directory_test").unwrap();
         let expected_files = [
             setup
                 .setup_path
@@ -653,35 +684,41 @@ mod tests {
         let result = fs::create_dir_all(setup.setup_path.join("existing-directory"));
         assert!(result.is_ok());
 
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
         let result = command.unwrap().execute();
         assert!(result.is_ok());
         validate_stow_result(&setup.setup_path, &expected_files);
+        drop(setup);
     }
 
     #[test]
     fn basic_stow_test() {
-        let setup = StowSetup::new("basic_stow_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("basic_stow_test").unwrap();
         let expected_files = [
             setup.setup_path.join("linked-file.txt"),
             setup.setup_path.join("linked-directory"),
         ];
 
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
         let result = command.unwrap().execute();
         assert!(result.is_ok());
         validate_stow_result(&setup.setup_path, &expected_files);
+        drop(setup);
     }
 
     #[test]
     fn dotfiles_stow_test() {
-        let setup = StowSetup::new("dotfiles_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("dotfiles_test").unwrap();
         let expected_files = [
             setup.setup_path.join(".bashrc"),
             setup.setup_path.join("regular-file.txt"),
@@ -690,6 +727,7 @@ mod tests {
         let command = setup
             .default_builder()
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .with_dot_file_prefix(Some("dot-".to_string()))
             .build();
         assert!(command.is_ok());
@@ -701,37 +739,44 @@ mod tests {
         // Verify .bashrc is a symlink to dot-bashrc
         let bashrc_link = fs::read_link(setup.setup_path.join(".bashrc")).unwrap_or_default();
         assert!(bashrc_link.ends_with("dot-bashrc"));
+        drop(setup);
     }
 
     #[test]
     fn ignored_items_stow_test() {
-        let setup = StowSetup::new("ignored_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("ignored_test").unwrap();
         let expected_files = [setup.setup_path.join("keep-file.txt")];
 
         let mut ignored = HashSet::new();
         ignored.insert("ignored-file.txt".to_string());
 
-        let command = setup.default_builder().stow().with_ignored(ignored).build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .with_ignored(ignored)
+            .build();
         assert!(command.is_ok());
 
         let result = command.unwrap().execute();
         assert!(result.is_ok());
         validate_stow_result(&setup.setup_path, &expected_files);
         assert!(!setup.setup_path.join("ignored-file.txt").exists());
+        drop(setup);
     }
 
     #[test]
     fn conflict_error_test() {
-        let setup = StowSetup::new("conflict_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("conflict_test").unwrap();
         // Create a file in the target that conflicts with something in the stow directory
         let result = fs::write(setup.setup_path.join("conflict-file.txt"), "existing");
         assert!(result.is_ok());
 
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
 
         let result = command.unwrap().execute();
@@ -742,16 +787,20 @@ mod tests {
             }
             e => panic!("Expected DirectoryEntryAlreadyExists error, got {e:?}"),
         }
+
+        drop(setup);
     }
 
     #[test]
     fn folding_stow_test() {
-        let setup = StowSetup::new("folding_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("folding_test").unwrap();
         // In folding mode (default), dir1 should be linked directly
 
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
 
         let result = command.unwrap().execute();
@@ -759,16 +808,20 @@ mod tests {
 
         let dir1_path = setup.setup_path.join("dir1");
         assert!(dir1_path.is_symlink());
+        drop(setup);
     }
 
     #[test]
     fn no_folding_stow_test() {
-        let setup = StowSetup::new("no_folding_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("no_folding_test").unwrap();
         // In no-folding mode, dir1 should be created and file1.txt linked inside it
 
-        let command = setup.default_builder().stow().with_no_folding(true).build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .with_no_folding(true)
+            .build();
         assert!(command.is_ok());
 
         let result = command.unwrap().execute();
@@ -781,13 +834,12 @@ mod tests {
 
         let file1_path = dir1_path.join("file1.txt");
         assert!(file1_path.is_symlink());
+        drop(setup);
     }
 
     #[test]
     fn override_existing_file_test() {
-        let setup = StowSetup::new("override_file_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("override_file_test").unwrap();
 
         let target_file = setup.setup_path.join("file.txt");
         let result = fs::write(&target_file, "existing content");
@@ -799,6 +851,7 @@ mod tests {
         let command = setup
             .default_builder()
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .with_overrides(overrides)
             .build();
         assert!(command.is_ok());
@@ -815,13 +868,12 @@ mod tests {
         let content = fs::read_to_string(&target_file);
         assert!(content.is_ok());
         assert_eq!(content.unwrap(), "original content\n");
+        drop(setup);
     }
 
     #[test]
     fn directory_vs_file_conflict_test() {
-        let setup = StowSetup::new("dir_conflict_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("dir_conflict_test").unwrap();
 
         // Target has a file named "dir1"
         let target_dir1 = setup.setup_path.join("dir1");
@@ -830,7 +882,11 @@ mod tests {
 
         // Source has a directory named "dir1" (setup by StowSetup::new from our manual mkdir)
 
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
 
         let result = command.unwrap().execute();
@@ -849,13 +905,12 @@ mod tests {
         let content = fs::read_to_string(&target_dir1);
         assert!(content.is_ok());
         assert_eq!(content.unwrap(), "i am a file");
+        drop(setup);
     }
 
     #[test]
     fn ignored_is_not_overridden_test() {
-        let setup = StowSetup::new("ignore_override_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("ignore_override_test").unwrap();
 
         let target_file = setup.setup_path.join("ignored-and-overridden.txt");
 
@@ -868,6 +923,7 @@ mod tests {
         let command = setup
             .default_builder()
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .with_ignored(ignored)
             .with_overrides(overrides)
             .build();
@@ -879,13 +935,12 @@ mod tests {
         // With the change, is_ignored returns true if matched, and doesn't check overrides.
         // So the file should NOT be stowed.
         assert!(!target_file.exists());
+        drop(setup);
     }
 
     #[test]
     fn target_missing_error_test() {
-        let setup = StowSetup::new("target_missing_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("target_missing_test").unwrap();
         let target_path = setup.setup_path.join("non-existent-target");
         // Ensure target path does not exist
         if target_path.exists() {
@@ -897,6 +952,7 @@ mod tests {
             .with_target(target_path)
             .with_packages(vec![setup.directory.clone()])
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .build();
         assert!(command.is_ok());
 
@@ -908,19 +964,20 @@ mod tests {
             }
             e => panic!("Expected InvalidTargetDirectory error, got {e:?}"),
         }
+
+        drop(setup);
     }
 
     #[test]
     fn stow_dir_missing_error_test() {
-        let setup = StowSetup::new("stow_dir_missing_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("stow_dir_missing_test").unwrap();
         let stow_dir = setup.directory.join("non-existent-stow-dir");
 
         let command = CommandBuilder::<CommandOperationImpl>::new()
             .with_target(setup.setup_path.clone())
             .with_packages(vec![stow_dir])
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .build();
         assert!(command.is_ok());
 
@@ -932,18 +989,19 @@ mod tests {
             }
             e => panic!("Expected StowDirectoryNotFound error, got {e:?}"),
         }
+
+        drop(setup);
     }
 
     #[test]
     fn same_dir_error_test() {
-        let setup = StowSetup::new("same_dir_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("same_dir_test").unwrap();
 
         let command = setup
             .default_builder()
             .with_target(setup.directory.clone())
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .build();
         assert!(command.is_ok());
 
@@ -957,13 +1015,13 @@ mod tests {
             }
             e => panic!("Expected InvalidStowDirectory error, got {e:?}"),
         }
+
+        drop(setup);
     }
 
     #[test]
     fn target_is_file_error_test() {
-        let setup = StowSetup::new("target_is_file_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("target_is_file_test").unwrap();
         let target_path = setup.setup_path.join("target-file");
         let result = fs::write(&target_path, "I am a file");
         assert!(result.is_ok());
@@ -972,6 +1030,7 @@ mod tests {
             .default_builder()
             .with_target(target_path)
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .build();
         assert!(command.is_ok());
 
@@ -983,6 +1042,8 @@ mod tests {
             }
             e => panic!("Expected InvalidTargetDirectory error, got {e:?}"),
         }
+
+        drop(setup);
     }
 
     #[test]
@@ -990,6 +1051,7 @@ mod tests {
         let result = CommandBuilder::<CommandOperationImpl>::new()
             .with_packages(vec![PathBuf::from("/some/dir")])
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .build();
 
         assert!(result.is_err());
@@ -1017,35 +1079,44 @@ mod tests {
 
     #[test]
     fn idempotent_stow_test() {
-        let setup = StowSetup::new("idempotent_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("idempotent_test").unwrap();
         let expected_files = [setup.setup_path.join("file1.txt")];
 
         // First execution
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
         let result = command.unwrap().execute();
         assert!(result.is_ok());
         validate_stow_result(&setup.setup_path, &expected_files);
 
         // Second execution - should be idempotent and skip existing correct links
-        let command2 = setup.default_builder().stow().build();
+        let command2 = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command2.is_ok());
         let result = command2.unwrap().execute();
         assert!(result.is_ok());
         validate_stow_result(&setup.setup_path, &expected_files);
+        drop(setup);
     }
 
     #[test]
     fn restow_test() {
-        let setup = StowSetup::new("restow_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new("restow_test").unwrap();
 
         let target_file = setup.setup_path.join("file.txt");
         let command_provider = || -> Command<DirectoryReader, CommandOperationImpl> {
-            let command = setup.default_builder().restow().build();
+            let command = setup
+                .default_builder()
+                .restow()
+                .with_linking_strategy(LinkingStrategy::Full)
+                .build();
             assert!(command.is_ok());
             command.unwrap()
         };
@@ -1064,16 +1135,19 @@ mod tests {
         assert!(result.is_ok());
         assert!(target_file.exists());
         assert!(target_file.is_symlink());
+        drop(setup);
     }
 
     #[test]
     fn basic_unstow_test() {
-        let setup = StowSetup::new_with_data("basic_unstow_test", "basic_stow_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new_with_data("basic_unstow_test", "basic_stow_test").unwrap();
 
         // Stow first
-        let command = setup.default_builder().stow().build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .build();
         assert!(command.is_ok());
         let result = command.unwrap().execute();
         assert!(result.is_ok());
@@ -1091,16 +1165,20 @@ mod tests {
         // Verify unstowed
         assert!(!setup.setup_path.join("linked-file.txt").exists());
         assert!(!setup.setup_path.join("linked-directory").exists());
+        drop(setup);
     }
 
     #[test]
     fn unstow_with_folding_disabled_test() {
-        let setup = StowSetup::new_with_data("unstow_with_folding_disabled_test", "no_folding_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new_with_data("unstow_with_folding_disabled_test", "no_folding_test").unwrap();
 
         // Stow first with folding disabled
-        let command = setup.default_builder().stow().with_no_folding(true).build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .with_no_folding(true)
+            .build();
         assert!(command.is_ok());
         let result = command.unwrap().execute();
         assert!(result.is_ok());
@@ -1122,18 +1200,18 @@ mod tests {
         // Verify unstowed and directory cleaned up
         assert!(!target_file.exists());
         assert!(!target_dir.exists());
+        drop(setup);
     }
 
     #[test]
     fn unstow_dotfiles_test() {
-        let setup = StowSetup::new_with_data("unstow_dotfiles_test", "dotfiles_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new_with_data("unstow_dotfiles_test", "dotfiles_test").unwrap();
 
         // Stow first with dot-file prefix
         let command = setup
             .default_builder()
             .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
             .with_dot_file_prefix(Some("dot-".to_string()))
             .build();
         assert!(command.is_ok());
@@ -1161,16 +1239,20 @@ mod tests {
         // Verify unstowed
         assert!(!dot_bashrc.exists());
         assert!(!regular_file.exists());
+        drop(setup);
     }
 
     #[test]
     fn unstow_nested_directories_test() {
-        let setup = StowSetup::new_with_data("unstow_nested_directories_test", "basic_stow_test");
-        assert!(setup.is_ok());
-        let setup = setup.unwrap();
+        let setup = StowSetup::new_with_data("unstow_nested_directories_test", "basic_stow_test").unwrap();
 
         // Stow first with folding disabled
-        let command = setup.default_builder().stow().with_no_folding(true).build();
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .with_no_folding(true)
+            .build();
         assert!(command.is_ok());
         let result = command.unwrap().execute();
         assert!(result.is_ok());
@@ -1196,5 +1278,26 @@ mod tests {
         assert!(!target_file.exists());
         assert!(!target_dir.exists());
         assert!(!target_file2.exists());
+        drop(setup);
+    }
+
+    #[test]
+    fn short_basic_stow_test() {
+        let setup = StowSetup::new("short_basic_stow_test").unwrap();
+        let expected_files = [
+            setup.setup_path.join("linked-file.txt"),
+            setup.setup_path.join("linked-directory"),
+        ];
+
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Short)
+            .build();
+        assert!(command.is_ok());
+        let result = command.unwrap().execute();
+        assert!(result.is_ok());
+        validate_stow_result(&setup.setup_path, &expected_files);
+        drop(setup);
     }
 }

@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 ///
 /// If the `path` starts with `~`, the function resolves the user's home directory
 /// using `env::home_dir`. It then joins the resolved home directory with the rest
-/// of the path (after stripping the `~` prefix), and finally canonicalizes it.
+/// of the path (after stripping the `~` prefix) and finally canonicalizes it.
 ///
 /// # Parameters
 /// - `path`: A reference to a `Path` representing the input path to be resolved.
@@ -131,4 +131,67 @@ pub fn resolve_home_path(path: &Path) -> Result<PathBuf, ResolveError> {
 
     let resolved_path = home_dir.join(path);
     Ok(resolved_path)
+}
+
+///
+/// Gets the relative path from the `base` path to the given `path`.
+///
+/// # Parameters
+/// - `path`: The path to get the relative path from the given `base`.
+/// - `base`: The base path to get the relative path from the given `path`.
+///
+/// # Returns
+/// - `Option<PathBuf>`: The relative path from the `base` path to the given `path`.
+///
+/// # Example
+/// ```rust
+/// use std::path::{Path, PathBuf};
+/// use graft::config::path_resolver;
+///
+/// let path = Path::new("/home/user/temp/file");
+/// let base = Path::new("/home/user");
+///
+/// let relative_path = path_resolver::path_relative_from(path, base);
+///
+/// assert_eq!(relative_path, Some(PathBuf::from("temp/file")));
+/// ```
+///
+#[must_use]
+pub fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
+    use std::path::Component;
+
+    if path.is_absolute() == base.is_absolute() {
+        let mut ita = path.components();
+        let mut itb = base.components();
+        let mut comps: Vec<Component> = vec![];
+        loop {
+            match (ita.next(), itb.next()) {
+                (None, None) => break,
+                (Some(a), None) => {
+                    comps.push(a);
+                    comps.extend(ita.by_ref());
+                    break;
+                }
+                (None, _) => comps.push(Component::ParentDir),
+                (Some(a), Some(b)) if comps.is_empty() && a == b => (),
+                (Some(a), Some(Component::CurDir)) => comps.push(a),
+                (Some(_), Some(Component::ParentDir)) => return None,
+                (Some(a), Some(_)) => {
+                    comps.push(Component::ParentDir);
+                    for _ in itb {
+                        comps.push(Component::ParentDir);
+                    }
+                    comps.push(a);
+                    comps.extend(ita.by_ref());
+                    break;
+                }
+            }
+        }
+
+        Some(comps.iter().map(|c| c.as_os_str()).collect())
+    } else if path.is_absolute() {
+        Some(PathBuf::from(path))
+    } else {
+        None
+    }
 }

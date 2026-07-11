@@ -67,4 +67,9 @@ pub enum CommandError {
         "The stow directory contains an invalid item: {item}.  It must be a file or directory and not a symbolic link."
     ))]
     InvalidStowItem { item: String },
+    #[snafu(display("Failed to change directory to {directory}"))]
+    ChangeDirectoryError {
+        source: std::io::Error,
+        directory: String,
+    },
 }

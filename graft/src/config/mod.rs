@@ -27,10 +27,12 @@ mod logging_error;
 mod color_config;
 mod format_error;
 mod level_error;
+mod linking_strategy_error;
 mod overrides;
 pub mod path_resolver;
 mod resolve_error;
 mod rotation_error;
+mod stow_config;
 mod version_error;
 
 use crate::config::config_error::{FileReadSnafu, ResolveSnafu, TomlSnafu};
@@ -41,6 +43,7 @@ pub use config_error::ConfigError;
 pub use config_file_version::ConfigFileVersion;
 pub use ignored::Ignored;
 pub use level_error::LevelError;
+pub use linking_strategy_error::LinkingStrategyError;
 pub use logging_config::{LoggingConfig, LoggingFormat};
 pub use logging_error::LoggingError;
 pub use overrides::Overrides;
@@ -50,6 +53,7 @@ use snafu::ResultExt;
 use std::fmt::Display;
 use std::path::Path;
 use std::{env, fs};
+pub use stow_config::{LinkingStrategy, StowConfig};
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct Config {
@@ -63,6 +67,8 @@ pub struct Config {
     pub overrides: Overrides,
     #[serde(default)]
     pub color: ColorConfig,
+    #[serde(default)]
+    pub stow: StowConfig,
 }
 
 impl Display for Config {
@@ -83,6 +89,7 @@ impl Default for Config {
             logging: LoggingConfig::default(),
             overrides: Overrides::default(),
             color: ColorConfig::default(),
+            stow: StowConfig::default(),
         }
     }
 }
@@ -235,6 +242,9 @@ mod test {
         arrow = "magenta"
         source = "white"
         target = "black"
+
+        [stow]
+        linking_strategy = "short"
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
@@ -280,6 +290,12 @@ mod test {
         };
 
         assert_eq!(config.color, expected_color);
+
+        let expected_stow = StowConfig {
+            linking_strategy: LinkingStrategy::Short,
+        };
+
+        assert_eq!(config.stow, expected_stow);
     }
 
     #[test]
@@ -311,6 +327,7 @@ mod test {
         assert_eq!(config.overrides, default_config.overrides);
         assert_eq!(config.color.enabled, default_config.color.enabled);
         assert_eq!(config.color, default_config.color);
+        assert_eq!(config.stow, default_config.stow);
     }
 
     #[test]
@@ -662,5 +679,67 @@ mod test {
         };
 
         assert_eq!(config.color, expected_color);
+    }
+
+    #[test]
+    fn toml_version_1_ignores_linking_strategy_case() {
+        let allowed_strategies = vec![LinkingStrategy::Short, LinkingStrategy::Full];
+
+        for strategy in allowed_strategies {
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            linking_strategy = "{strategy}"
+            "#
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.linking_strategy, strategy);
+
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            linking_strategy = "{}"
+            "#,
+                strategy.to_string().to_uppercase()
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.linking_strategy, strategy);
+
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            linking_strategy = "{}"
+            "#,
+                strategy.to_string().to_lowercase()
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.linking_strategy, strategy);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_linking_strategy_can_use_numeric_value() {
+        let allowed_strategies = vec![LinkingStrategy::Short, LinkingStrategy::Full];
+
+        for strategy in allowed_strategies {
+            let config_content = format!(
+                "
+            version = 1
+
+            [stow]
+            linking_strategy = {}
+            ",
+                strategy as i64
+            );
+
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.linking_strategy, strategy);
+        }
     }
 }

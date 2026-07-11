@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::config::LinkingStrategy;
 use grep::pcre2::{RegexMatcher, RegexMatcherBuilder};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
@@ -40,6 +41,7 @@ impl Debug for StowFilter {
 pub struct StowOptions {
     pub(crate) filter: StowFilter,
     pub(crate) dot_file_prefix: Option<String>,
+    pub(crate) linking_strategy: LinkingStrategy,
     pub(crate) no_folding: bool,
 }
 
@@ -55,6 +57,7 @@ impl StowOptions {
     #[instrument(level = "trace", skip(ignored, overrides))]
     pub fn new<T: AsRef<str> + Display + Debug, I: Iterator<Item = T>, O: Iterator<Item = T>>(
         dot_file_prefix: Option<String>,
+        linking_strategy: LinkingStrategy,
         no_folding: bool,
         ignored: I,
         overrides: O,
@@ -66,6 +69,7 @@ impl StowOptions {
         let overrides = overrides.filter_map(Self::build_matcher).collect();
         Self {
             no_folding,
+            linking_strategy,
             dot_file_prefix,
             filter: StowFilter { ignored, overrides },
         }
