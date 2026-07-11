@@ -179,6 +179,9 @@ create = "Green"
 arrow = "Blue"
 source = "Yellow"
 target = "Magenta"
+
+[stow]
+linking_strategy = "short"
 ```
 
 ### Version 1 Configuration Options
@@ -221,6 +224,11 @@ target = "Magenta"
     - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
 - `target`: The color of the target text (default: 'Magenta')
     - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
+
+#### Stow
+
+- `linking_strategy`: The linking strategy to use when stowing files (default: 'short')
+    - Possible values: 'short', 'full'
 
 ### Configuration Location
 

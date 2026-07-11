@@ -1,0 +1,1 @@
+../../../stow_tests/idempotent_test/file1.txt

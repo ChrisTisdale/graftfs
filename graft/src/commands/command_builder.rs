@@ -22,6 +22,7 @@ use crate::commands::{
     ColorSupport, Command, CommandBuildError, CommandOperation, CommandOperationImpl, DirectoryReader, ListData,
     RestowData, StowData, StowOptions, UnstowData,
 };
+use crate::config::LinkingStrategy;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -46,6 +47,7 @@ pub struct StowCommandBuilder<T: CommandOperation<DirectoryReader>> {
     builder: CommandBuilder<T>,
     ignored: HashSet<String>,
     overrides: HashSet<String>,
+    linking_strategy: LinkingStrategy,
     no_folding: bool,
 }
 
@@ -133,6 +135,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
             builder: self,
             ignored: HashSet::new(),
             overrides: HashSet::new(),
+            linking_strategy: LinkingStrategy::default(),
             no_folding: false,
         }
     }
@@ -320,6 +323,13 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
         self
     }
 
+    /// Sets the linking strategy for the stow command.
+    #[must_use]
+    pub const fn with_linking_strategy(mut self, strategy: LinkingStrategy) -> Self {
+        self.linking_strategy = strategy;
+        self
+    }
+
     /// Switches the stow command into simulated execution mode.
     #[must_use]
     pub fn simulate(self, color_support: ColorSupport) -> StowCommandBuilder<CommandOperationImpl> {
@@ -328,6 +338,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             ignored: self.ignored,
             overrides: HashSet::new(),
             no_folding: self.no_folding,
+            linking_strategy: self.linking_strategy,
         }
     }
 
@@ -339,6 +350,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             ignored: self.ignored,
             overrides: self.overrides,
             no_folding: self.no_folding,
+            linking_strategy: self.linking_strategy,
         }
     }
 
@@ -388,6 +400,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
         let stow_options = StowOptions::new(
             self.builder.dot_file_prefix,
+            self.linking_strategy,
             self.no_folding,
             self.ignored.iter(),
             self.overrides.iter(),
@@ -482,6 +495,13 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
         self
     }
 
+    /// Sets the linking strategy for the restow command.
+    #[must_use]
+    pub fn with_linking_strategy(mut self, strategy: LinkingStrategy) -> Self {
+        self.stow_command = self.stow_command.with_linking_strategy(strategy);
+        self
+    }
+
     /// Builds a `Command<T>` object from the current state of the builder.
     /// This method validates the builder's configuration and constructs a `Command`
     /// if all required fields are properly initialized. If any required fields are
@@ -530,6 +550,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
 
         let stow_options = StowOptions::new(
             cmd.builder.dot_file_prefix,
+            cmd.linking_strategy,
             cmd.no_folding,
             cmd.ignored.iter(),
             cmd.overrides.iter(),

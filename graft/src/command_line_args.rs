@@ -23,7 +23,7 @@ use crate::cli_errors::{
     LoggingSnafu, OutputFileCreationSnafu, ResolveSnafu,
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
-use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LoggingFormat, path_resolver};
+use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, path_resolver};
 use crate::shell::Shell;
 use clap::builder::Styles;
 use clap::error::ErrorKind;
@@ -152,6 +152,12 @@ struct StowArgs {
         help = "Perform a dry run of the operation. This will display the actions that would be taken without making any actual changes to the filesystem."
     )]
     simulate: bool,
+    #[clap(
+        short = 's',
+        long = "linking-strategy",
+        help = "Specify the linking strategy for stowing files."
+    )]
+    linking_strategy: Option<LinkingStrategy>,
 }
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
@@ -486,6 +492,10 @@ impl CommandLineProcessor {
             .setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)
             .context(LoggingSnafu)?;
 
+        let linking_strategy = stow_args
+            .linking_strategy
+            .unwrap_or_else(|| app_config.linking_strategy());
+
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .stow()
@@ -495,6 +505,7 @@ impl CommandLineProcessor {
             .with_overrides(app_config.overrides)
             .with_target(target)
             .with_packages(packages)
+            .with_linking_strategy(linking_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Stow" })?;
 
@@ -544,6 +555,10 @@ impl CommandLineProcessor {
             .setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)
             .context(LoggingSnafu)?;
 
+        let linking_strategy = stow_args
+            .linking_strategy
+            .unwrap_or_else(|| app_config.linking_strategy());
+
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .restow()
@@ -553,6 +568,7 @@ impl CommandLineProcessor {
             .with_overrides(app_config.overrides)
             .with_target(target)
             .with_packages(packages)
+            .with_linking_strategy(linking_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Restow" })?;
 
