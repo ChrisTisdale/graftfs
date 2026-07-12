@@ -72,4 +72,9 @@ pub enum CommandError {
         source: std::io::Error,
         directory: String,
     },
+    #[snafu(display("Failed to resolve the file {file}"))]
+    ResolveError {
+        file: String,
+        source: crate::config::ResolveError,
+    },
 }

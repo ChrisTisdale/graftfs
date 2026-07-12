@@ -17,9 +17,11 @@
  */
 
 use crate::commands::command_error::{
-    CreateDirectorySnafu, DirectoryReadSnafu, DirectoryRemoveSnafu, FileRemoveSnafu, ReadLinkSnafu, SymLinkSnafu,
+    CreateDirectorySnafu, DirectoryReadSnafu, DirectoryRemoveSnafu, FileRemoveSnafu, ReadLinkSnafu, ResolveSnafu,
+    SymLinkSnafu,
 };
 use crate::commands::{ColorSupport, CommandError};
+use crate::config::path_resolver::resolve_path;
 use snafu::ResultExt;
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
@@ -349,7 +351,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
 pub enum CommandOperationImpl {
     #[default]
     Default,
-    Simulated(SimulatedData),
+    Simulated(Box<SimulatedData>),
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -363,6 +365,8 @@ struct LinkedDirectory {
 pub struct SimulatedData {
     created_directories: Vec<PathBuf>,
     created_links: Vec<LinkedDirectory>,
+    removed_links: Vec<PathBuf>,
+    removed_items: Vec<PathBuf>,
     color_support: ColorSupport,
 }
 
@@ -370,6 +374,185 @@ impl SimulatedData {
     pub const fn with_color_support(mut self, color_support: ColorSupport) -> Self {
         self.color_support = color_support;
         self
+    }
+
+    fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
+        let path = resolve_path(item).with_context(|_| ResolveSnafu {
+            file: item.display().to_string(),
+        })?;
+
+        let link_path = resolve_path(target).with_context(|_| ResolveSnafu {
+            file: target.display().to_string(),
+        })?;
+        self.created_links.push(LinkedDirectory {
+            path,
+            link_path: link_path.clone(),
+        });
+
+        let index = self
+            .removed_links
+            .iter()
+            .position(|path| path == &link_path);
+        if let Some(index) = index {
+            self.removed_links.remove(index);
+        }
+
+        let index = self.removed_items.iter().position(|path| path == item);
+        if let Some(index) = index {
+            self.removed_items.remove(index);
+        }
+
+        self.color_support.print_link_text(item, target);
+        Ok(())
+    }
+
+    fn remove_link(&mut self, item: &Path) {
+        let target = item.to_path_buf();
+        self.removed_links.push(target.clone());
+        let index = self
+            .created_links
+            .iter()
+            .position(|path| path.link_path == target);
+        if let Some(index) = index {
+            self.created_links.remove(index);
+        }
+
+        let index = self
+            .created_directories
+            .iter()
+            .position(|path| path == &target);
+        if let Some(index) = index {
+            self.created_directories.remove(index);
+        }
+
+        Self::recurse_files(&target, &mut |p| self.remove_item_no_print(p));
+        self.color_support.print_unlink_text(item);
+    }
+
+    fn remove_item(&mut self, item: &Path) {
+        self.remove_item_no_print(item);
+        self.color_support.print_remove_text(item);
+    }
+
+    fn remove_item_no_print(&mut self, item: &Path) {
+        let target = item.to_path_buf();
+
+        self.removed_items.push(target.clone());
+        let index = self
+            .created_links
+            .iter()
+            .position(|path| path.link_path == target);
+        if let Some(index) = index {
+            self.created_links.remove(index);
+        }
+
+        let index = self
+            .created_directories
+            .iter()
+            .position(|path| path == &target);
+        if let Some(index) = index {
+            self.created_directories.remove(index);
+        }
+    }
+
+    fn create_directory(&mut self, item: &Path) -> Result<(), CommandError> {
+        let target = resolve_path(item).with_context(|_| ResolveSnafu {
+            file: item.display().to_string(),
+        })?;
+
+        self.created_directories.push(target.clone());
+        let index = self.removed_items.iter().position(|path| path == &target);
+        if let Some(index) = index {
+            self.removed_items.remove(index);
+        }
+
+        let index = self.removed_links.iter().position(|path| path == &target);
+        if let Some(index) = index {
+            self.removed_links.remove(index);
+        }
+
+        self.color_support.print_create_text(item);
+        Ok(())
+    }
+
+    fn is_directory(&self, target: &Path) -> bool {
+        let target = target.to_path_buf();
+        if self.removed_items.contains(&target) {
+            return false;
+        }
+
+        if self.removed_links.contains(&target) {
+            return false;
+        }
+
+        if fs::metadata(&target).is_ok_and(|meta| meta.is_dir()) {
+            return true;
+        }
+
+        self.created_directories.contains(&target)
+    }
+
+    fn is_symlink(&self, target: &Path) -> bool {
+        let target = target.to_path_buf();
+        if self.removed_items.contains(&target) {
+            return false;
+        }
+
+        if self.removed_links.contains(&target) {
+            return false;
+        }
+
+        if fs::symlink_metadata(&target).is_ok_and(|meta| meta.is_symlink()) {
+            return true;
+        }
+
+        self.created_links
+            .iter()
+            .any(|link| link.link_path == target)
+    }
+
+    fn exists(&self, target: &Path) -> bool {
+        let target = target.to_path_buf();
+        if self.removed_links.contains(&target) {
+            return false;
+        }
+
+        if self.removed_items.contains(&target) {
+            return false;
+        }
+
+        if fs::exists(&target).unwrap_or(false) {
+            return true;
+        }
+
+        self.created_directories.contains(&target)
+            || self
+                .created_links
+                .iter()
+                .any(|link| link.link_path == target)
+    }
+
+    fn recurse_files<F>(path: impl AsRef<Path>, processor: &mut F)
+    where
+        F: FnMut(&Path),
+    {
+        if let Ok(entries) = fs::read_dir(path) {
+            entries.for_each(|entry| {
+                let entry = entry;
+                if let Ok(entry) = entry {
+                    let meta = entry.metadata();
+                    if let Ok(meta) = meta {
+                        if meta.is_dir() {
+                            let path = entry.path();
+                            processor(&path);
+                            Self::recurse_files(path, processor);
+                        } else if meta.is_file() {
+                            processor(&entry.path());
+                        }
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -411,14 +594,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     destination: target.display().to_string(),
                 })?;
             }
-            Self::Simulated(data) => {
-                data.created_links.push(LinkedDirectory {
-                    path: item.to_path_buf(),
-                    link_path: target.to_path_buf(),
-                });
-
-                data.color_support.print_link_text(item, target);
-            }
+            Self::Simulated(data) => data.link_item(item, target)?,
         }
 
         Ok(())
@@ -442,14 +618,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     })?;
                 }
             }
-            Self::Simulated(data) => {
-                data.created_links.push(LinkedDirectory {
-                    path: item.to_path_buf(),
-                    link_path: target.to_path_buf(),
-                });
-
-                data.color_support.print_link_text(item, target);
-            }
+            Self::Simulated(data) => data.link_item(item, target)?,
         }
 
         Ok(())
@@ -470,9 +639,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     file: entry_path.display().to_string(),
                 })?;
             }
-            Self::Simulated(data) => {
-                data.color_support.print_unlink_text(entry_path);
-            }
+            Self::Simulated(data) => data.remove_link(entry_path),
         }
 
         Ok(())
@@ -499,9 +666,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     })?;
                 }
             }
-            Self::Simulated(data) => {
-                data.color_support.print_unlink_text(entry_path);
-            }
+            Self::Simulated(data) => data.remove_link(entry_path)?,
         }
 
         Ok(())
@@ -523,7 +688,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     })?;
                 }
             }
-            Self::Simulated(data) => data.color_support.print_remove_text(target),
+            Self::Simulated(data) => data.remove_item(target),
         }
 
         Ok(())
@@ -538,10 +703,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     directory: target.display().to_string(),
                 })?;
             }
-            Self::Simulated(data) => {
-                data.created_directories.push(target.to_owned());
-                data.color_support.print_create_text(target);
-            }
+            Self::Simulated(data) => data.create_directory(target)?,
         }
 
         Ok(())
@@ -549,13 +711,9 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     #[instrument(level = "trace")]
     fn is_directory(&self, target: &Path) -> bool {
-        if fs::metadata(target).is_ok_and(|meta| meta.is_dir()) {
-            return true;
-        }
-
         match self {
-            Self::Default => false,
-            Self::Simulated(data) => data.created_directories.contains(&target.to_path_buf()),
+            Self::Default => fs::metadata(target).is_ok_and(|meta| meta.is_dir()),
+            Self::Simulated(data) => data.is_directory(target),
         }
     }
 
@@ -566,7 +724,10 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     #[instrument(level = "trace")]
     fn is_symlink(&self, target: &Path) -> bool {
-        fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink())
+        match self {
+            Self::Default => fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink()),
+            Self::Simulated(data) => data.is_symlink(target),
+        }
     }
 
     #[instrument(level = "trace")]
@@ -578,19 +739,9 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     #[instrument(level = "trace")]
     fn exists(&self, target: &Path) -> bool {
-        if fs::exists(target).unwrap_or(false) {
-            return true;
-        }
-
         match self {
-            Self::Default => false,
-            Self::Simulated(data) => {
-                data.created_directories.contains(&target.to_path_buf())
-                    || data
-                        .created_links
-                        .iter()
-                        .any(|link| link.link_path == target)
-            }
+            Self::Default => fs::exists(target).unwrap_or(false),
+            Self::Simulated(data) => data.exists(target),
         }
     }
 

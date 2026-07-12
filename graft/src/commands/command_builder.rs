@@ -112,7 +112,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
         CommandBuilder::<CommandOperationImpl> {
             target: self.target,
             packages: self.packages,
-            operation: CommandOperationImpl::Simulated(SimulatedData::default().with_color_support(color_support)),
+            operation: CommandOperationImpl::Simulated(Box::new(
+                SimulatedData::default().with_color_support(color_support),
+            )),
             dot_file_prefix: self.dot_file_prefix,
         }
     }
