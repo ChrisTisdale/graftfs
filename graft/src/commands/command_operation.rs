@@ -672,7 +672,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
                     })?;
                 }
             }
-            Self::Simulated(data) => data.remove_link(entry_path)?,
+            Self::Simulated(data) => data.remove_link(entry_path),
         }
 
         Ok(())
