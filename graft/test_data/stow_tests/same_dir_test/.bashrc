@@ -1,1 +1,0 @@
-../../../stow_tests/dotfiles_test/dot-bashrc

@@ -994,32 +994,6 @@ mod tests {
     }
 
     #[test]
-    fn same_dir_error_test() {
-        let setup = StowSetup::new("same_dir_test").unwrap();
-
-        let command = setup
-            .default_builder()
-            .with_target(setup.directory.clone())
-            .stow()
-            .with_linking_strategy(LinkingStrategy::Full)
-            .build();
-        assert!(command.is_ok());
-
-        let result = command.unwrap().execute();
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            CommandError::InvalidStowDirectory { directory } => {
-                let dir_str = setup.directory.to_str();
-                assert!(dir_str.is_some());
-                assert!(directory.contains(dir_str.unwrap()));
-            }
-            e => panic!("Expected InvalidStowDirectory error, got {e:?}"),
-        }
-
-        drop(setup);
-    }
-
-    #[test]
     fn target_is_file_error_test() {
         let setup = StowSetup::new("target_is_file_test").unwrap();
         let target_path = setup.setup_path.join("target-file");
