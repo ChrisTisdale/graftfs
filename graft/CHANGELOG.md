@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.2.0 (2026-07-13)
+
+### New Features
+
+ - <csr-id-117432c9fd26021dc0defb27bf590938fa1a39aa/> Adding short symlinking support
+   Adding support for shorted symlinking.  The default will be short
+   symlinks but it can be changed either via the configuration file or via
+   the commandline.
+
+### Bug Fixes
+
+ - <csr-id-4497b7855d64374194eb3eab178a1a2d4230ef24/> Fixing publish
+   Addressing an issue with tests that where failing publishing
+ - <csr-id-078e1d98d65bb02b034d2ac1a8c02e22f83d7059/> Fixing simulation not handling restow
+   Addressed an issue with restow not printing that it was linking items.
+   
+   Addressing issues with simulation mode when stowing without folding
+   directories
+ - <csr-id-3c3489d4aa16234f280aef770077e7a7b9747ef9/> Addressing warnings
+   Putting back disable warnings for enum names.  They match the shell names
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 5 calendar days.
+ - 5 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#18](https://github.com/ChrisTisdale/graftfs/issues/18), [#20](https://github.com/ChrisTisdale/graftfs/issues/20)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#18](https://github.com/ChrisTisdale/graftfs/issues/18)**
+    - Adding short symlinking support ([`117432c`](https://github.com/ChrisTisdale/graftfs/commit/117432c9fd26021dc0defb27bf590938fa1a39aa))
+ * **[#20](https://github.com/ChrisTisdale/graftfs/issues/20)**
+    - Fixing simulation not handling restow ([`078e1d9`](https://github.com/ChrisTisdale/graftfs/commit/078e1d98d65bb02b034d2ac1a8c02e22f83d7059))
+ * **Uncategorized**
+    - Fixing publish ([`4497b78`](https://github.com/ChrisTisdale/graftfs/commit/4497b7855d64374194eb3eab178a1a2d4230ef24))
+    - Addressing warnings ([`3c3489d`](https://github.com/ChrisTisdale/graftfs/commit/3c3489d4aa16234f280aef770077e7a7b9747ef9))
+</details>
+
 ## v1.1.0 (2026-07-07)
 
 ### Documentation
@@ -34,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 10 calendar days.
+ - 6 commits contributed to the release over the course of 10 calendar days.
  - 10 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#12](https://github.com/ChrisTisdale/graftfs/issues/12), [#15](https://github.com/ChrisTisdale/graftfs/issues/15), [#16](https://github.com/ChrisTisdale/graftfs/issues/16)
@@ -52,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#16](https://github.com/ChrisTisdale/graftfs/issues/16)**
     - Adding nushell completion support ([`097ef89`](https://github.com/ChrisTisdale/graftfs/commit/097ef89587f5d25584f02a51c6d0a34e93450793))
  * **Uncategorized**
+    - Release graftfs v1.1.0 ([`83d5e38`](https://github.com/ChrisTisdale/graftfs/commit/83d5e384f42729483dc89203dc541f95f61ccba4))
     - Fixing subcommand man manpages ([`e05c5ba`](https://github.com/ChrisTisdale/graftfs/commit/e05c5ba8a2b46ae8bd386367bb4aba6c58fa1927))
     - Moving changelog to the package scope ([`bec2096`](https://github.com/ChrisTisdale/graftfs/commit/bec2096129a8e9b7764ee7b8e98a9640a93627e1))
 </details>
