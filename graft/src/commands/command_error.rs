@@ -72,4 +72,11 @@ pub enum CommandError {
         source: std::io::Error,
         directory: String,
     },
+    #[snafu(display("Failed to get current working directory"))]
+    WorkingDirectoryError { source: std::io::Error },
+    #[snafu(display("Failed to get the absolute path of {path}"))]
+    AbsolutePathError {
+        path: String,
+        source: std::io::Error,
+    },
 }
