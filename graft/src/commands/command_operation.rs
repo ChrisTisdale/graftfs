@@ -17,15 +17,14 @@
  */
 
 use crate::commands::command_error::{
-    CreateDirectorySnafu, DirectoryReadSnafu, DirectoryRemoveSnafu, FileRemoveSnafu, ReadLinkSnafu, ResolveSnafu,
-    SymLinkSnafu,
+    AbsolutePathSnafu, CreateDirectorySnafu, DirectoryReadSnafu, DirectoryRemoveSnafu, FileRemoveSnafu, ReadLinkSnafu,
+    SymLinkSnafu, WorkingDirectorySnafu,
 };
 use crate::commands::{ColorSupport, CommandError};
-use crate::config::path_resolver::resolve_path;
 use snafu::ResultExt;
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
-use std::{fs, os};
+use std::{env, fs, os, path};
 use tracing::{debug, info, instrument, warn};
 
 pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
@@ -376,14 +375,22 @@ impl SimulatedData {
         self
     }
 
-    fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
-        let path = resolve_path(item).with_context(|_| ResolveSnafu {
-            file: item.display().to_string(),
+    fn resolve_path(path: &Path, current_dir: &Path) -> Result<PathBuf, CommandError> {
+        if path.is_absolute() {
+            return Ok(path.to_path_buf());
+        }
+
+        let path = path::absolute(current_dir.join(path)).with_context(|_| AbsolutePathSnafu {
+            path: path.display().to_string(),
         })?;
 
-        let link_path = resolve_path(target).with_context(|_| ResolveSnafu {
-            file: target.display().to_string(),
-        })?;
+        Ok(path)
+    }
+
+    fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
+        let current_dir = env::current_dir().context(WorkingDirectorySnafu)?;
+        let path = Self::resolve_path(item, &current_dir)?;
+        let link_path = Self::resolve_path(target, &current_dir)?;
         self.created_links.push(LinkedDirectory {
             path,
             link_path: link_path.clone(),
@@ -456,9 +463,8 @@ impl SimulatedData {
     }
 
     fn create_directory(&mut self, item: &Path) -> Result<(), CommandError> {
-        let target = resolve_path(item).with_context(|_| ResolveSnafu {
-            file: item.display().to_string(),
-        })?;
+        let current_dir = env::current_dir().context(WorkingDirectorySnafu)?;
+        let target = Self::resolve_path(item, &current_dir)?;
 
         self.created_directories.push(target.clone());
         let index = self.removed_items.iter().position(|path| path == &target);
