@@ -19,11 +19,11 @@
 use crate::CliError;
 use crate::cli_args::CliArgs;
 use crate::cli_errors::{
-    CommandBuildSnafu, CommandLineParsingSnafu, GenerateCompletionsSnafu, InvalidConfigFileSnafu, InvalidPathSnafu,
-    LoggingSnafu, OutputFileCreationSnafu, ResolveSnafu,
+    CommandBuildSnafu, CommandLineParsingSnafu, ConfigWriteSnafu, FileCreationSnafu, GenerateCompletionsSnafu,
+    InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, OutputFileCreationSnafu, ResolveSnafu,
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
-use crate::config::{AppConfiguration, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, path_resolver};
+use crate::config::{AppConfiguration, Config, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, path_resolver};
 use crate::shell::Shell;
 use clap::builder::Styles;
 use clap::error::ErrorKind;
@@ -207,6 +207,26 @@ struct ListArgs {
     global: GlobalArgs,
 }
 
+#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+pub struct ExportConfigArgs {
+    #[clap(
+        short = 'o',
+        long = "output",
+        help = "Specify the output file for the configuration. If not provided, the configuration will be printed to stdout.",
+        value_name = "FILE",
+        required = false
+    )]
+    output: Option<PathBuf>,
+    #[arg(
+        short = 'c',
+        long = "config",
+        help = "Path to a custom configuration file. If not specified, graft looks for a '.graft.toml' file in the current working directory.",
+        value_name = "FILE",
+        value_hint = ValueHint::FilePath
+    )]
+    config_file: Option<PathBuf>,
+}
+
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 enum ProcessCommands {
     #[command(
@@ -251,6 +271,13 @@ enum ProcessCommands {
         about = "Generate shell completions for the stow command. This is useful for enhancing the user experience by providing auto-completion suggestions for command-line arguments."
     )]
     Completions(#[clap(flatten)] CompletionArgs),
+    #[command(
+        name = "export-config",
+        long_flag = "export-config",
+        flatten_help = true,
+        about = "Export the current configuration to a file. This is useful for creating a starting configuration or creating a backup of the current configuration."
+    )]
+    ExportConfig(#[clap(flatten)] ExportConfigArgs),
 }
 
 impl Display for ProcessCommands {
@@ -261,6 +288,7 @@ impl Display for ProcessCommands {
             Self::Restow { .. } => f.write_str("Restow"),
             Self::List { .. } => f.write_str("List"),
             Self::Completions { .. } => f.write_str("Completions"),
+            Self::ExportConfig { .. } => f.write_str("ExportConfig"),
         }
     }
 }
@@ -328,6 +356,67 @@ impl CompletionPrinter {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct ConfigPrinter {
+    output: Option<PathBuf>,
+    config_file: Option<PathBuf>,
+}
+
+impl Display for ConfigPrinter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.output {
+            Some(path) => write!(f, "Configuration exported to: {}", path.display()),
+            None => write!(f, "Configuration printed to stdout"),
+        }
+    }
+}
+
+impl ConfigPrinter {
+    #[must_use]
+    pub const fn new(output: Option<PathBuf>, config_file: Option<PathBuf>) -> Self {
+        Self {
+            output,
+            config_file,
+        }
+    }
+
+    /// Prints the current configuration to an output destination.
+    ///
+    /// This method reads the configuration from a file, and writes it to either
+    /// a user-specified output file or to standard output. It handles errors
+    /// related to file access, invalid configurations, or issues during the
+    /// write process.
+    ///
+    /// # Errors
+    ///
+    /// - Returns a `CliError` if any of the following occur:
+    ///   - The configuration file cannot be read or is invalid.
+    ///   - Fails to create or write to the specified output file.
+    ///   - Fails to write the configuration to standard output.
+    pub fn print_config(&self) -> Result<(), CliError> {
+        let config = Config::from_file(self.config_file.as_deref()).with_context(|_| InvalidConfigFileSnafu {
+            file: self.config_file.as_ref().map_or_else(
+                || DEFAULT_CONFIG_FILE.to_string(),
+                |p| p.display().to_string(),
+            ),
+        })?;
+
+        if let Some(output) = &self.output {
+            let mut file = File::create(output).with_context(|_| FileCreationSnafu {
+                file: output.display().to_string(),
+            })?;
+
+            config.write_config(&mut file)
+        } else {
+            let mut stdout = std::io::stdout();
+            config.write_config(&mut stdout)
+        }
+        .context(ConfigWriteSnafu)?;
+
+        Ok(())
+    }
+}
+
 impl CommandLineProcessor {
     /// Parses and processes command-line arguments to configure the CLI application.
     ///
@@ -378,6 +467,7 @@ impl CommandLineProcessor {
             ProcessCommands::Restow(stow_args) => Self::restow(stow_args),
             ProcessCommands::List(list_args) => Self::list(list_args),
             ProcessCommands::Completions(completion_args) => Self::completions(completion_args),
+            ProcessCommands::ExportConfig(export_args) => Self::export_config(export_args),
         }
     }
 
@@ -608,6 +698,12 @@ impl CommandLineProcessor {
 
         Err(CliError::PrintCompletions {
             printer: CompletionPrinter::new(shell, completion_args.output),
+        })
+    }
+
+    fn export_config(export_config_args: ExportConfigArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
+        Err(CliError::ExportConfig {
+            printer: ConfigPrinter::new(export_config_args.output, export_config_args.config_file),
         })
     }
 

@@ -40,4 +40,8 @@ pub enum ConfigError {
         file: String,
         source: crate::config::ResolveError,
     },
+    #[snafu(display("Failed to write TOML file"))]
+    TomlWriteError { source: toml::ser::Error },
+    #[snafu(display("Failed to write TOML file"))]
+    WriteError { source: std::io::Error },
 }
