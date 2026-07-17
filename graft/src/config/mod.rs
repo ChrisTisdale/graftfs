@@ -35,7 +35,7 @@ mod rotation_error;
 mod stow_config;
 mod version_error;
 
-use crate::config::config_error::{FileReadSnafu, ResolveSnafu, TomlSnafu};
+use crate::config::config_error::{FileReadSnafu, ResolveSnafu, TomlSnafu, TomlWriteSnafu, WriteSnafu};
 pub use app_configuration::{AppConfiguration, DEFAULT_CONFIG_FILE};
 pub use app_directories::AppDirectories;
 pub use color_config::{ColorConfig, ColorSettings};
@@ -51,6 +51,7 @@ pub use resolve_error::ResolveError;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use std::fmt::Display;
+use std::io::Write;
 use std::path::Path;
 use std::{env, fs};
 pub use stow_config::{LinkingStrategy, StowConfig};
@@ -142,6 +143,36 @@ impl Config {
         }
 
         Ok(Self::default())
+    }
+
+    /// writes the configuration to the given writer.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - The writer to write the configuration to.
+    ///
+    /// returns: Result<(), `ConfigError`> - The result of writing the configuration to the writer.
+    ///
+    /// # Errors
+    ///
+    /// - `ConfigError::TomlWriteError` - The configuration could not be written to the writer.
+    /// - `ConfigError::WriteError` - The configuration could not be written to the writer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use graft::config::Config;
+    ///
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = Config::default();
+    ///     config.write_config(&mut std::io::stdout())?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn write_config<T: Write>(&self, writer: &mut T) -> Result<(), ConfigError> {
+        let content = toml::to_string_pretty(self).context(TomlWriteSnafu)?;
+        writer.write_all(content.as_bytes()).context(WriteSnafu)?;
+        Ok(())
     }
 
     fn read_config_file(file_path: &Path, app_directories: &AppDirectories) -> Result<Self, ConfigError> {

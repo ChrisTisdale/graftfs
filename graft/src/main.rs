@@ -153,6 +153,7 @@ fn main() -> Result<(), CliError> {
     match process_command_line_args() {
         Ok(()) => Ok(()),
         Err(CliError::PrintCompletions { printer }) => printer.print_completions(),
+        Err(CliError::ExportConfig { printer }) => printer.print_config(),
         Err(CliError::CommandLineParsingError { source }) => source.exit(),
         Err(e) => Err(e),
     }
