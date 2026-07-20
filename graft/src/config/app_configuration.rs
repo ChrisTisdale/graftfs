@@ -20,7 +20,7 @@ use crate::commands::ColorSupport;
 use crate::config::config_error::FileReadSnafu;
 use crate::config::logging_config::LoggingFormat;
 use crate::config::logging_error::LoggingSnafu;
-use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError};
+use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel};
 use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
@@ -165,12 +165,12 @@ impl AppConfiguration {
     /// ```
     pub fn setup_logger(
         &self,
-        override_level: Option<LevelFilter>,
+        override_level: Option<LoggingLevel>,
         override_format: Option<LoggingFormat>,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
-        let config_level = override_level.unwrap_or_else(|| self.config.logging.level.into());
+        let config_level = override_level.unwrap_or(self.config.logging.level);
         let config_format = override_format.unwrap_or(self.config.logging.format);
-        if config_level == LevelFilter::OFF {
+        if config_level == LoggingLevel::Off {
             return Ok(None);
         }
 
@@ -181,8 +181,8 @@ impl AppConfiguration {
             .and_then(|d| self.get_rolling_appender(d))
             .map(tracing_appender::non_blocking)
             .map_or_else(
-                || self.set_console_logger(config_level, config_format),
-                |(appender, guard)| Self::set_file_logger(config_level, config_format, appender, guard),
+                || self.set_console_logger(config_level.into(), config_format),
+                |(appender, guard)| Self::set_file_logger(config_level.into(), config_format, appender, guard),
             )
     }
 

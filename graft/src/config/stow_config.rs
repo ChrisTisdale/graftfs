@@ -17,12 +17,13 @@
  */
 
 use crate::config::LinkingStrategyError;
+use clap::ValueEnum;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
 pub enum LinkingStrategy {
     #[default]
@@ -120,7 +121,7 @@ mod tests {
 
     #[test]
     fn linking_strategy_from_str_short() {
-        let soft = LinkingStrategy::from_str("short");
+        let soft = <LinkingStrategy as FromStr>::from_str("short");
         assert!(soft.is_ok());
         let soft = soft.unwrap();
         assert_eq!(soft, LinkingStrategy::Short);
@@ -128,7 +129,7 @@ mod tests {
 
     #[test]
     fn linking_strategy_from_str_full() {
-        let trace = LinkingStrategy::from_str("full");
+        let trace = <LinkingStrategy as FromStr>::from_str("full");
         assert!(trace.is_ok());
         let trace = trace.unwrap();
         assert_eq!(trace, LinkingStrategy::Full);
@@ -136,7 +137,7 @@ mod tests {
 
     #[test]
     fn linking_strategy_from_str_invalid() {
-        let invalid = LinkingStrategy::from_str("invalid");
+        let invalid = <LinkingStrategy as FromStr>::from_str("invalid");
         assert!(invalid.is_err());
     }
 

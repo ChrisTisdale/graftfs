@@ -44,7 +44,7 @@ pub use config_file_version::ConfigFileVersion;
 pub use ignored::Ignored;
 pub use level_error::LevelError;
 pub use linking_strategy_error::LinkingStrategyError;
-pub use logging_config::{LoggingConfig, LoggingFormat};
+pub use logging_config::{LoggingConfig, LoggingFormat, LoggingLevel};
 pub use logging_error::LoggingError;
 pub use overrides::Overrides;
 pub use resolve_error::ResolveError;

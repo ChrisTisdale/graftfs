@@ -23,7 +23,9 @@ use crate::cli_errors::{
     InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, OutputFileCreationSnafu, ResolveSnafu,
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
-use crate::config::{AppConfiguration, Config, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, path_resolver};
+use crate::config::{
+    AppConfiguration, Config, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel, path_resolver,
+};
 use crate::shell::Shell;
 use clap::builder::Styles;
 use clap::error::ErrorKind;
@@ -36,7 +38,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
-use tracing::level_filters::LevelFilter;
 
 const APP_NAME: &str = "graft";
 const STYLES: Styles = Styles::styled();
@@ -105,13 +106,15 @@ struct LoggingArgs {
     #[arg(
         short = 'l',
         long = "log-level",
-        help = "Set the application logging level. Supported levels are: Trace, Debug, Info, Warn, Error, or Off. This is primarily used for troubleshooting and debugging.",
+        help = "Set the application logging level. This is primarily used for troubleshooting and debugging.",
+        ignore_case = true,
         value_name = "LEVEL"
     )]
-    log_level: Option<LevelFilter>,
+    log_level: Option<LoggingLevel>,
     #[arg(
         long = "log-format",
-        help = "Set the logging format. Supported formats are: Text, JSON, or Combined.",
+        help = "Set the logging format.",
+        ignore_case = true,
         value_name = "FORMAT"
     )]
     log_format: Option<LoggingFormat>,
@@ -155,6 +158,7 @@ struct StowArgs {
     #[clap(
         short = 's',
         long = "linking-strategy",
+        ignore_case = true,
         help = "Specify the linking strategy for stowing files."
     )]
     linking_strategy: Option<LinkingStrategy>,
@@ -184,6 +188,7 @@ struct CompletionArgs {
         value_enum,
         help = "The shell for which completions should be generated.",
         value_name = "SHELL",
+        ignore_case = true,
         required = false
     )]
     shell: Option<Shell>,

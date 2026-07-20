@@ -19,6 +19,7 @@
 use crate::config::LevelError;
 use crate::config::format_error::FormatError;
 use crate::config::rotation_error::RotationError;
+use clap::ValueEnum;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::fmt::Display;
@@ -27,7 +28,7 @@ use std::str::FromStr;
 use tracing::level_filters::LevelFilter;
 use tracing_appender::rolling::Rotation;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
 pub enum LoggingLevel {
     Off = 0,
@@ -256,7 +257,7 @@ impl Display for RotationType {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, ValueEnum)]
 #[repr(i64)]
 pub enum LoggingFormat {
     #[default]
@@ -407,43 +408,43 @@ mod test {
 
     #[test]
     fn logging_level_from_str_off() {
-        let logging_level = LoggingLevel::from_str("off").unwrap();
+        let logging_level = <LoggingLevel as FromStr>::from_str("off").unwrap();
         assert_eq!(logging_level, LoggingLevel::Off);
     }
 
     #[test]
     fn logging_level_from_str_trace() {
-        let logging_level = LoggingLevel::from_str("trace").unwrap();
+        let logging_level = <LoggingLevel as FromStr>::from_str("trace").unwrap();
         assert_eq!(logging_level, LoggingLevel::Trace);
     }
 
     #[test]
     fn logging_level_from_str_debug() {
-        let logging_level = LoggingLevel::from_str("debug").unwrap();
+        let logging_level = <LoggingLevel as FromStr>::from_str("debug").unwrap();
         assert_eq!(logging_level, LoggingLevel::Debug);
     }
 
     #[test]
     fn logging_level_from_str_info() {
-        let logging_level = LoggingLevel::from_str("info").unwrap();
+        let logging_level = <LoggingLevel as FromStr>::from_str("info").unwrap();
         assert_eq!(logging_level, LoggingLevel::Info);
     }
 
     #[test]
     fn logging_level_from_str_warn() {
-        let logging_level = LoggingLevel::from_str("warn").unwrap();
+        let logging_level = <LoggingLevel as FromStr>::from_str("warn").unwrap();
         assert_eq!(logging_level, LoggingLevel::Warn);
     }
 
     #[test]
     fn logging_level_from_str_error() {
-        let logging_level = LoggingLevel::from_str("error").unwrap();
+        let logging_level = <LoggingLevel as FromStr>::from_str("error").unwrap();
         assert_eq!(logging_level, LoggingLevel::Error);
     }
 
     #[test]
     fn logging_level_from_str_invalid() {
-        let result = LoggingLevel::from_str("invalid");
+        let result = <LoggingLevel as FromStr>::from_str("invalid");
         match result {
             Err(LevelError::InvalidLevelString { level }) => assert_eq!(level, "invalid"),
             _ => panic!("Unexpected error type"),
@@ -587,19 +588,19 @@ mod test {
 
     #[test]
     fn logging_format_compact_from_str_compact() {
-        let logging_format = LoggingFormat::from_str("compact").unwrap();
+        let logging_format = <LoggingFormat as FromStr>::from_str("compact").unwrap();
         assert_eq!(logging_format, LoggingFormat::Compact);
     }
 
     #[test]
     fn logging_format_pretty_from_str_pretty() {
-        let logging_format = LoggingFormat::from_str("pretty").unwrap();
+        let logging_format = <LoggingFormat as FromStr>::from_str("pretty").unwrap();
         assert_eq!(logging_format, LoggingFormat::Pretty);
     }
 
     #[test]
     fn logging_format_json_from_str_json() {
-        let logging_format = LoggingFormat::from_str("json").unwrap();
+        let logging_format = <LoggingFormat as FromStr>::from_str("json").unwrap();
         assert_eq!(logging_format, LoggingFormat::Json);
     }
 
