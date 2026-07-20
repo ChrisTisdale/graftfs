@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.2.1 (2026-07-19)
+
+### New Features
+
+ - <csr-id-761b1a8347a5b1a2bd768d118b4433326126e788/> Updating dependencies
+   Updating to the latest dependencies
+ - <csr-id-d3e1575f8dad28f139b96f110bb4e65fde30a273/> Updating dependencies
+   Updating to the latest dependencies
+ - <csr-id-005806d5cd58903a86bdfcf390eee4acc0b9c864/> Support exporting the current configuration file
+   This adds support to export the current configuration file or a user
+   provided configuration file to either standard out or a file provided by
+   the user.
+ - <csr-id-c2932f50a92f27ef88beab43e70bce892169b848/> Updating dependencies
+   Updating to the latest dependencies
+
+### Bug Fixes
+
+ - <csr-id-bc1b9f0055ad02c298b4946b8668f307fb9f36cb/> Addressing issues with help values
+   Addressing issues with help values either being missing or incorrect.
+   This will not correctly list the supported values for enum types.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release over the course of 3 calendar days.
+ - 6 days passed between releases.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#22](https://github.com/ChrisTisdale/graftfs/issues/22)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#22](https://github.com/ChrisTisdale/graftfs/issues/22)**
+    - Support exporting the current configuration file ([`005806d`](https://github.com/ChrisTisdale/graftfs/commit/005806d5cd58903a86bdfcf390eee4acc0b9c864))
+ * **Uncategorized**
+    - Addressing issues with help values ([`bc1b9f0`](https://github.com/ChrisTisdale/graftfs/commit/bc1b9f0055ad02c298b4946b8668f307fb9f36cb))
+    - Updating dependencies ([`761b1a8`](https://github.com/ChrisTisdale/graftfs/commit/761b1a8347a5b1a2bd768d118b4433326126e788))
+    - Updating dependencies ([`d3e1575`](https://github.com/ChrisTisdale/graftfs/commit/d3e1575f8dad28f139b96f110bb4e65fde30a273))
+    - Updating dependencies ([`c2932f5`](https://github.com/ChrisTisdale/graftfs/commit/c2932f50a92f27ef88beab43e70bce892169b848))
+</details>
+
 ## v1.2.0 (2026-07-13)
 
 ### New Features
@@ -30,8 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 5 calendar days.
- - 5 days passed between releases.
+ - 5 commits contributed to the release over the course of 5 calendar days.
+ - 6 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#18](https://github.com/ChrisTisdale/graftfs/issues/18), [#20](https://github.com/ChrisTisdale/graftfs/issues/20)
 
@@ -46,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#20](https://github.com/ChrisTisdale/graftfs/issues/20)**
     - Fixing simulation not handling restow ([`078e1d9`](https://github.com/ChrisTisdale/graftfs/commit/078e1d98d65bb02b034d2ac1a8c02e22f83d7059))
  * **Uncategorized**
+    - Release graftfs v1.2.0 ([`85203b2`](https://github.com/ChrisTisdale/graftfs/commit/85203b2f48b9635b4cfd43767327ed965dc4905a))
     - Fixing publish ([`4497b78`](https://github.com/ChrisTisdale/graftfs/commit/4497b7855d64374194eb3eab178a1a2d4230ef24))
     - Addressing warnings ([`3c3489d`](https://github.com/ChrisTisdale/graftfs/commit/3c3489d4aa16234f280aef770077e7a7b9747ef9))
 </details>

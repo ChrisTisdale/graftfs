@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "graftfs"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "clap",
  "clap_complete",
