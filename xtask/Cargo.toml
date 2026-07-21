@@ -10,5 +10,5 @@ path = "../graft"
 
 [dependencies]
 anyhow = { version = "1.0.104" }
-clap = { version = "4.6.3", features = ["color", "derive", "error-context", "help", "suggestions", "unicode", "wrap_help", "usage"] }
+clap = { version = "4.6.4", features = ["color", "derive", "error-context", "help", "suggestions", "unicode", "wrap_help", "usage"] }
 clap_mangen = { version = "0.3.0" }
