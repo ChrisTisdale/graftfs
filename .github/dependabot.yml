@@ -1,32 +1,36 @@
 version: 2
 updates:
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
-    time: '00:00'
-    timezone: US/Central
-  allow:
-    # Allow both direct and indirect updates for all packages
-    - dependency-type: "all"
-  target-branch: "main"
-  open-pull-requests-limit: 99
-- package-ecosystem: cargo
-  directory: "/"
-  schedule:
-    interval: weekly
-    time: '00:00'
-    timezone: US/Central
-  ignore:
-    # These are peer deps of Cargo and should not be automatically bumped
-    - dependency-name: "semver"
-    - dependency-name: "crates-io"
-  allow:
-    # Allow both direct and indirect updates for all packages
-    - dependency-type: "all"
-  target-branch: "main"
-  open-pull-requests-limit: 99
-  groups:
-    all-dependencies:
-      patterns:
-        - "*"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      time: '00:00'
+      timezone: US/Central
+    allow:
+      # Allow both direct and indirect updates for all packages
+      - dependency-type: "all"
+    target-branch: "main"
+    open-pull-requests-limit: 99
+    commit-message:
+      prefix: "chore(deps):"
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      time: '00:00'
+      timezone: US/Central
+    ignore:
+      # These are peer deps of Cargo and should not be automatically bumped
+      - dependency-name: "semver"
+      - dependency-name: "crates-io"
+    allow:
+      # Allow both direct and indirect updates for all packages
+      - dependency-type: "all"
+    target-branch: "main"
+    open-pull-requests-limit: 99
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(deps):"
