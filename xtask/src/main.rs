@@ -22,7 +22,7 @@ use graft::CommandLineProcessor;
 use std::{
     env, fs,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 
 const ALL_FEATURES: &str = "--all-features";
@@ -51,12 +51,6 @@ struct DistributeArgs {
         conflicts_with = "features"
     )]
     all_features: bool,
-    #[clap(
-        short = 's',
-        long = "stip",
-        help = "Stip the binary of debug symbols.  This is useful for creating smaller binaries for distribution."
-    )]
-    stip_binary: bool,
     #[clap(
         short = 'c',
         long = "configuration",
@@ -130,17 +124,17 @@ fn process_dist(args: DistributeArgs) -> Result<(), anyhow::Error> {
     };
 
     additional_args.push(configuration.to_string());
-    dist(additional_args, &output, args.stip_binary)
+    dist(additional_args, &output)
 }
 
-fn dist(additional_args: Vec<String>, out_dir: &Path, stip_binary: bool) -> Result<(), anyhow::Error> {
+fn dist(additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Error> {
     let _ = fs::remove_dir_all(out_dir);
     fs::create_dir_all(out_dir)?;
 
     let with_nushell = additional_args
         .iter()
         .any(|a| a.ends_with(" nushell") || a.eq(ALL_FEATURES));
-    dist_binary(additional_args, out_dir, stip_binary)?;
+    dist_binary(additional_args, out_dir)?;
     dist_manpage(out_dir, with_nushell)?;
     Ok(())
 }
@@ -212,7 +206,7 @@ fn render_subcommand(cmd: &clap::Command, out_dir: &Path, with_nushell: bool) ->
     Ok(())
 }
 
-fn dist_binary(mut additional_args: Vec<String>, out_dir: &Path, stip_binary: bool) -> Result<(), anyhow::Error> {
+fn dist_binary(mut additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Error> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let root = project_root()?;
 
@@ -226,29 +220,7 @@ fn dist_binary(mut additional_args: Vec<String>, out_dir: &Path, stip_binary: bo
 
     let source = root.join("target/release/graft");
     let destination = out_dir.join("graft");
-
     fs::copy(&source, &destination)?;
-
-    if !stip_binary {
-        return Ok(());
-    }
-
-    if Command::new("strip")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok()
-    {
-        eprintln!("stripping the binary");
-        let status = Command::new("strip").arg(&source).status()?;
-        if !status.success() {
-            return Err(anyhow::Error::msg("strip failed"));
-        }
-    } else {
-        eprintln!("no `strip` utility found");
-    }
-
     Ok(())
 }
 
