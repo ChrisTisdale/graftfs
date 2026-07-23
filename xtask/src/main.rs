@@ -28,6 +28,13 @@ use std::{
 const ALL_FEATURES: &str = "--all-features";
 const APP_NAME: &str = "xtask";
 const STYLES: Styles = Styles::styled();
+const HELP_TEMPLATE: &str = r"
+{before-help}{name} {version}: {author-with-newline}
+{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}
+";
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, ValueEnum)]
 enum Configuration {
@@ -38,27 +45,27 @@ enum Configuration {
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
 struct DistributeArgs {
-    #[clap(
+    #[arg(
         short = 'f',
         long = "feature",
         help = "Features to enable when building the graft application"
     )]
     features: Vec<String>,
-    #[clap(
+    #[arg(
         short = 'a',
         long = "all-features",
         help = "Enable all features when building the graft application",
         conflicts_with = "features"
     )]
     all_features: bool,
-    #[clap(
+    #[arg(
         short = 'c',
         long = "configuration",
         help = "Configuration to use when building the graft application",
         default_value = "release"
     )]
     configuration: Configuration,
-    #[clap(
+    #[arg(
         short = 'o',
         long = "output",
         help = "The output directory used for the generated binary and man pages.  If not specified, the target/dist directory at the root of the project will be used.  The directory will be deleted if it exists before building."
@@ -68,19 +75,22 @@ struct DistributeArgs {
 
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 enum XCommands {
-    #[clap(name = "dist", about = "Builds application and man pages")]
+    #[command(name = "dist", about = "Builds application and man pages")]
     Dist(#[clap(flatten)] DistributeArgs),
 }
 
 #[derive(Parser)]
-#[command(version, name = APP_NAME, about, author, propagate_version = true, styles = STYLES, help_template = "\
-{before-help}{name} {version}: {author-with-newline}
-{about-with-newline}
-{usage-heading} {usage}
-
-{all-args}{after-help}
-")]
-#[clap(rename_all = "snake_case")]
+#[command(
+    rename_all = "snake_case",
+    max_term_width = 120,
+    version,
+    name = APP_NAME,
+    about,
+    author,
+    propagate_version = true,
+    styles = STYLES,
+    help_template = HELP_TEMPLATE
+)]
 struct XCommandLineArgs {
     #[clap(subcommand)]
     command: XCommands,

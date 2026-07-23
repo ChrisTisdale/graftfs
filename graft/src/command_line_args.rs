@@ -44,6 +44,13 @@ const STYLES: Styles = Styles::styled();
 const MISSING_DIRECTORY_ERROR: &str = r"Either the source directory or package name is required.  Please provide either of the following:
   --directory <DIRECTORY>
   --package <PACKAGE>";
+const HELP_TEMPLATE: &str = r"
+{before-help}{name} {version}: {author-with-newline}
+{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}
+";
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
 struct GlobalArgs {
@@ -155,11 +162,12 @@ struct StowArgs {
         help = "Perform a dry run of the operation. This will display the actions that would be taken without making any actual changes to the filesystem."
     )]
     simulate: bool,
-    #[clap(
+    #[arg(
         short = 's',
         long = "linking-strategy",
         ignore_case = true,
-        help = "Specify the linking strategy for stowing files."
+        help = "Specify the linking strategy for stowing files.",
+        value_name = "STRATEGY"
     )]
     linking_strategy: Option<LinkingStrategy>,
 }
@@ -214,7 +222,7 @@ struct ListArgs {
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
 pub struct ExportConfigArgs {
-    #[clap(
+    #[arg(
         short = 'o',
         long = "output",
         help = "Specify the output file for the configuration. If not provided, the configuration will be printed to stdout.",
@@ -299,14 +307,16 @@ impl Display for ProcessCommands {
 }
 
 #[derive(Parser)]
-#[command(version, name = APP_NAME, about, author, propagate_version = true, styles = STYLES, help_template = "\
-{before-help}{name} {version}: {author-with-newline}
-{about-with-newline}
-{usage-heading} {usage}
-
-{all-args}{after-help}
-")]
-#[clap(rename_all = "snake_case")]
+#[command(
+    rename_all = "snake_case",
+    max_term_width = 120,
+    version,
+    name = APP_NAME,
+    about, author,
+    propagate_version = true,
+    styles = STYLES,
+    help_template = HELP_TEMPLATE
+)]
 pub struct CommandLineProcessor {
     #[clap(subcommand)]
     process_command: ProcessCommands,
@@ -563,8 +573,13 @@ impl CommandLineProcessor {
 
         let mut package_directories = Vec::with_capacity(packages.len());
         for package in packages {
+            let path = Path::new(package);
+            let path = path_resolver::resolve_home_path(path).with_context(|_| ResolveSnafu {
+                file: package.clone(),
+            })?;
+
             let package_directory = source
-                .join(package)
+                .join(path)
                 .canonicalize()
                 .with_context(|_| InvalidPathSnafu { path: package })?;
             package_directories.push(package_directory);
