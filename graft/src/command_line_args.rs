@@ -585,6 +585,7 @@ impl CommandLineProcessor {
             package_directories.push(package_directory);
         }
 
+        package_directories.dedup();
         Ok(package_directories)
     }
 
