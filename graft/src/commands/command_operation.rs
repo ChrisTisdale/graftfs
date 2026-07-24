@@ -432,7 +432,6 @@ impl SimulatedData {
             self.created_directories.remove(index);
         }
 
-        Self::recurse_files(&target, &mut |p| self.remove_item_no_print(p));
         self.color_support.print_unlink_text(item);
     }
 
@@ -527,6 +526,12 @@ impl SimulatedData {
             return false;
         }
 
+        for created in &self.created_directories {
+            if target.starts_with(created) {
+                return false;
+            }
+        }
+
         if fs::exists(&target).unwrap_or(false) {
             return true;
         }
@@ -536,29 +541,6 @@ impl SimulatedData {
                 .created_links
                 .iter()
                 .any(|link| link.link_path == target)
-    }
-
-    fn recurse_files<F>(path: impl AsRef<Path>, processor: &mut F)
-    where
-        F: FnMut(&Path),
-    {
-        if let Ok(entries) = fs::read_dir(path) {
-            entries.for_each(|entry| {
-                let entry = entry;
-                if let Ok(entry) = entry {
-                    let meta = entry.metadata();
-                    if let Ok(meta) = meta {
-                        if meta.is_dir() {
-                            let path = entry.path();
-                            processor(&path);
-                            Self::recurse_files(path, processor);
-                        } else if meta.is_file() {
-                            processor(&entry.path());
-                        }
-                    }
-                }
-            });
-        }
     }
 }
 
