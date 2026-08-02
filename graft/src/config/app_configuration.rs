@@ -61,7 +61,6 @@ const DEFAULT_IGNORE: &[&str] = &[
     "^/.DS_Store",
 ];
 
-#[derive(Debug)]
 pub struct AppConfiguration {
     config: Config,
     pub ignored: HashSet<String>,

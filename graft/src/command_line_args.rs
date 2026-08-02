@@ -52,7 +52,7 @@ const HELP_TEMPLATE: &str = r"
 {all-args}{after-help}
 ";
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct GlobalArgs {
     #[arg(
         long = "no-color",
@@ -127,7 +127,7 @@ struct LoggingArgs {
     log_format: Option<LoggingFormat>,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct StowArgs {
     #[arg(
         long = "no-folding",
@@ -172,7 +172,7 @@ struct StowArgs {
     linking_strategy: Option<LinkingStrategy>,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct UnstowArgs {
     #[clap(flatten)]
     logging: LoggingArgs,
@@ -210,7 +210,7 @@ struct CompletionArgs {
     output: Option<PathBuf>,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct ListArgs {
     #[clap(flatten)]
     logging: LoggingArgs,
@@ -220,7 +220,7 @@ struct ListArgs {
     global: GlobalArgs,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 pub struct ExportConfigArgs {
     #[arg(
         short = 'o',
@@ -240,7 +240,7 @@ pub struct ExportConfigArgs {
     config_file: Option<PathBuf>,
 }
 
-#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
+#[derive(Subcommand, Clone, PartialEq, Eq)]
 enum ProcessCommands {
     #[command(
         short_flag = 'S',

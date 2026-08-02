@@ -20,7 +20,7 @@ use crate::config::LinkingStrategy;
 use grep::pcre2::{RegexMatcher, RegexMatcherBuilder};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
-use tracing::{debug, instrument, trace, warn};
+use tracing::{debug, instrument, warn};
 
 #[derive(Default)]
 pub struct StowFilter {
@@ -62,7 +62,6 @@ impl StowOptions {
         ignored: I,
         overrides: O,
     ) -> Self {
-        trace!("Creating stow options");
         debug!("Creating ignore matches");
         let ignored = ignored.filter_map(Self::build_matcher).collect();
         debug!("Creating override matches");

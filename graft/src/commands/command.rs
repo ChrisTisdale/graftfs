@@ -361,8 +361,8 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         let no_folding = operation.is_directory(item) && package.data.options.no_folding;
         let file_name = Self::get_item_name(item, package.data.options.dot_file_prefix.as_ref())?;
         let full_path = target.join(file_name);
-        trace!(
-            "Stowing directory entry: {}.  With no folding: {}",
+        debug!(
+            "Trying to stow directory entry: {}.  With no folding: {}",
             item.display(),
             no_folding
         );
