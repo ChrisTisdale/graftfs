@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.2.3 (2026-08-04)
+
+### Chore
+
+ - <csr-id-99ae3ab8e72454fc332e21b3294a2e15f219133e/> Updating dependencies
+   Updating to the latest dependencies and cleaning up logging a bit
+ - <csr-id-2c125dfb448151c90fe56d78512cbffad3fcf62c/> Updating dependencies
+   Updating to the latest dependencies.
+
+### Bug Fixes
+
+ - <csr-id-a840c3797ca42cf162a836cd6c6abb86de12536a/> Addressing performance issues
+   Addressing performance issues with restow simulation mode.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 11 calendar days.
+ - 13 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#25](https://github.com/ChrisTisdale/graftfs/issues/25)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#25](https://github.com/ChrisTisdale/graftfs/issues/25)**
+    - Addressing performance issues ([`a840c37`](https://github.com/ChrisTisdale/graftfs/commit/a840c3797ca42cf162a836cd6c6abb86de12536a))
+ * **Uncategorized**
+    - Updating dependencies ([`99ae3ab`](https://github.com/ChrisTisdale/graftfs/commit/99ae3ab8e72454fc332e21b3294a2e15f219133e))
+    - Updating dependencies ([`2c125df`](https://github.com/ChrisTisdale/graftfs/commit/2c125dfb448151c90fe56d78512cbffad3fcf62c))
+</details>
+
 ## v1.2.2 (2026-07-22)
 
 ### Chore
@@ -28,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 2 calendar days.
+ - 4 commits contributed to the release over the course of 2 calendar days.
  - 3 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#23](https://github.com/ChrisTisdale/graftfs/issues/23)
@@ -42,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#23](https://github.com/ChrisTisdale/graftfs/issues/23)**
     - Updating to the latest dependices ([`e36d6ef`](https://github.com/ChrisTisdale/graftfs/commit/e36d6ef1da4e7fc841b911e7d95b6152b50f23b4))
  * **Uncategorized**
+    - Release graftfs v1.2.2 ([`775288c`](https://github.com/ChrisTisdale/graftfs/commit/775288c06871d4346f808514c51205da956d2337))
     - Updating for support for upcoming clap breaking changes ([`a8cbf36`](https://github.com/ChrisTisdale/graftfs/commit/a8cbf3664958dba6155c8e807b9e12d01610aebb))
     - Updating dependencies and removing strip from xtask ([`ce74d5a`](https://github.com/ChrisTisdale/graftfs/commit/ce74d5a3a9812ca1c2268ad833d9d076ff0a09ab))
 </details>
