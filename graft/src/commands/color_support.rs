@@ -38,6 +38,7 @@ impl Display for ColorSupport {
 }
 
 impl ColorSupport {
+    #[must_use]
     fn format_link_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),
@@ -55,6 +56,7 @@ impl ColorSupport {
         );
     }
 
+    #[must_use]
     fn format_unlink_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),
@@ -70,6 +72,7 @@ impl ColorSupport {
         );
     }
 
+    #[must_use]
     fn format_list_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),
@@ -87,6 +90,7 @@ impl ColorSupport {
         );
     }
 
+    #[must_use]
     fn format_remove_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),
@@ -102,6 +106,7 @@ impl ColorSupport {
         );
     }
 
+    #[must_use]
     fn format_create_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
             Self::None => style(text),

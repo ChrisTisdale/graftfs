@@ -20,7 +20,7 @@ use crate::config::LinkingStrategy;
 use grep::pcre2::{RegexMatcher, RegexMatcherBuilder};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
-use tracing::{debug, instrument, warn};
+use tracing::{debug, warn};
 
 #[derive(Default)]
 pub struct StowFilter {
@@ -54,7 +54,6 @@ pub struct StowData {
 
 impl StowOptions {
     #[must_use]
-    #[instrument(level = "trace", skip(ignored, overrides))]
     pub fn new<T: AsRef<str> + Display + Debug, I: Iterator<Item = T>, O: Iterator<Item = T>>(
         dot_file_prefix: Option<String>,
         linking_strategy: LinkingStrategy,
@@ -63,9 +62,9 @@ impl StowOptions {
         overrides: O,
     ) -> Self {
         debug!("Creating ignore matches");
-        let ignored = ignored.filter_map(Self::build_matcher).collect();
+        let ignored = ignored.filter_map(Self::build_ignore_matcher).collect();
         debug!("Creating override matches");
-        let overrides = overrides.filter_map(Self::build_matcher).collect();
+        let overrides = overrides.filter_map(Self::build_override_matcher).collect();
         Self {
             no_folding,
             linking_strategy,
@@ -74,9 +73,16 @@ impl StowOptions {
         }
     }
 
-    #[instrument(level = "trace")]
-    fn build_matcher<T: AsRef<str> + Display + Debug>(item: T) -> Option<RegexMatcher> {
-        debug!("Adding matched item: {item}");
+    fn build_ignore_matcher<T: AsRef<str> + Display + Debug>(item: T) -> Option<RegexMatcher> {
+        Self::build_matcher("ignored", item)
+    }
+
+    fn build_override_matcher<T: AsRef<str> + Display + Debug>(item: T) -> Option<RegexMatcher> {
+        Self::build_matcher("override", item)
+    }
+
+    fn build_matcher<T: AsRef<str> + Display + Debug>(match_type: &str, item: T) -> Option<RegexMatcher> {
+        debug!("Adding {match_type} matched item: {item}");
         match RegexMatcherBuilder::new().build(item.as_ref()) {
             Ok(m) => Some(m),
             Err(e) => {
@@ -89,8 +95,7 @@ impl StowOptions {
 
 impl StowData {
     #[must_use]
-    #[instrument(level = "trace")]
-    pub fn new(target: PathBuf, packages: Vec<PathBuf>, options: StowOptions) -> Self {
+    pub const fn new(target: PathBuf, packages: Vec<PathBuf>, options: StowOptions) -> Self {
         Self {
             target,
             packages,

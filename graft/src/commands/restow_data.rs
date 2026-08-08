@@ -18,7 +18,6 @@
 
 use crate::commands::{StowData, StowOptions, UnstowData};
 use std::path::PathBuf;
-use tracing::instrument;
 
 #[derive(Debug)]
 pub struct RestowData {
@@ -52,7 +51,6 @@ impl AsRef<StowData> for RestowData {
 
 impl RestowData {
     #[must_use]
-    #[instrument(level = "trace")]
     pub fn new(target: PathBuf, packages: Vec<PathBuf>, options: StowOptions) -> Self {
         Self {
             unstow_data: UnstowData::new(
