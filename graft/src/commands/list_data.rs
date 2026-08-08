@@ -18,7 +18,6 @@
 
 use crate::commands::ColorSupport;
 use std::path::PathBuf;
-use tracing::instrument;
 
 #[derive(Debug)]
 pub struct ListData {
@@ -30,8 +29,7 @@ pub struct ListData {
 
 impl ListData {
     #[must_use]
-    #[instrument(level = "trace")]
-    pub fn new(
+    pub const fn new(
         target: PathBuf,
         packages: Vec<PathBuf>,
         dot_file_prefix: Option<String>,

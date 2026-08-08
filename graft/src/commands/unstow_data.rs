@@ -17,7 +17,6 @@
  */
 
 use std::path::PathBuf;
-use tracing::instrument;
 
 #[derive(Debug)]
 pub struct UnstowData {
@@ -28,8 +27,7 @@ pub struct UnstowData {
 
 impl UnstowData {
     #[must_use]
-    #[instrument(level = "trace")]
-    pub fn new(target: PathBuf, packages: Vec<PathBuf>, dot_file_prefix: Option<String>) -> Self {
+    pub const fn new(target: PathBuf, packages: Vec<PathBuf>, dot_file_prefix: Option<String>) -> Self {
         Self {
             target,
             packages,

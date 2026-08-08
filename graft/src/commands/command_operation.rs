@@ -25,7 +25,7 @@ use snafu::ResultExt;
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 use std::{env, fs, os, path};
-use tracing::{debug, info, instrument, warn};
+use tracing::{info, warn};
 
 pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// Creates a symbolic link from the `source` path to the `target` path.
@@ -572,11 +572,10 @@ impl Iterator for DirectoryReader {
 
 impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     #[cfg(unix)]
-    #[instrument(level = "trace")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
+        info!("Linking {} {}", item.display(), target.display());
         match self {
             Self::Default => {
-                info!("Linking {} {}", item.display(), target.display());
                 os::unix::fs::symlink(item, target).with_context(|_| SymLinkSnafu {
                     target: item.display().to_string(),
                     destination: target.display().to_string(),
@@ -589,7 +588,6 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     }
 
     #[cfg(target_os = "windows")]
-    #[instrument(level = "trace")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
         match self {
             Self::Default => {
@@ -613,7 +611,6 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     }
 
     #[cfg(unix)]
-    #[instrument(level = "trace")]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
             warn!("Not a symlink: {}", entry_path.display());
@@ -622,7 +619,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
         match self {
             Self::Default => {
-                debug!("Deleting symlink: {}", entry_path.display());
+                info!("Deleting symlink: {}", entry_path.display());
                 fs::remove_file(entry_path).with_context(|_| FileRemoveSnafu {
                     file: entry_path.display().to_string(),
                 })?;
@@ -634,7 +631,6 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     }
 
     #[cfg(target_os = "windows")]
-    #[instrument(level = "trace")]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
             warn!("Not a symlink: {}", entry_path.display());
@@ -643,7 +639,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
         match self {
             Self::Default => {
-                debug!("Deleting symlink: {}", entry_path.display());
+                info!("Deleting symlink: {}", entry_path.display());
                 if self.is_directory(entry_path) {
                     fs::remove_dir(entry_path).with_context(|_| DirectoryRemoveSnafu {
                         directory: entry_path.display().to_string(),
@@ -660,17 +656,16 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         Ok(())
     }
 
-    #[instrument(level = "trace")]
     fn remove_item(&mut self, target: &Path) -> Result<(), CommandError> {
         match self {
             Self::Default => {
                 if self.is_directory(target) {
-                    debug!("Deleting directory: {}", target.display());
+                    info!("Deleting directory: {}", target.display());
                     fs::remove_dir(target).with_context(|_| DirectoryRemoveSnafu {
                         directory: target.display().to_string(),
                     })?;
                 } else {
-                    debug!("Deleting file: {}", target.display());
+                    info!("Deleting file: {}", target.display());
                     fs::remove_file(target).with_context(|_| FileRemoveSnafu {
                         file: target.display().to_string(),
                     })?;
@@ -682,11 +677,10 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         Ok(())
     }
 
-    #[instrument(level = "trace")]
     fn create_directory(&mut self, target: &Path) -> Result<(), CommandError> {
         match self {
             Self::Default => {
-                debug!("Creating directory: {}", target.display());
+                info!("Creating directory: {}", target.display());
                 fs::create_dir_all(target).with_context(|_| CreateDirectorySnafu {
                     directory: target.display().to_string(),
                 })?;
@@ -697,7 +691,6 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         Ok(())
     }
 
-    #[instrument(level = "trace")]
     fn is_directory(&self, target: &Path) -> bool {
         match self {
             Self::Default => fs::metadata(target).is_ok_and(|meta| meta.is_dir()),
@@ -705,12 +698,10 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         }
     }
 
-    #[instrument(level = "trace")]
     fn is_file(&self, target: &Path) -> bool {
         fs::metadata(target).is_ok_and(|meta| meta.is_file())
     }
 
-    #[instrument(level = "trace")]
     fn is_symlink(&self, target: &Path) -> bool {
         match self {
             Self::Default => fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink()),
@@ -718,14 +709,12 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         }
     }
 
-    #[instrument(level = "trace")]
     fn read_link(&self, target: &Path) -> Result<PathBuf, CommandError> {
         target.canonicalize().with_context(|_| ReadLinkSnafu {
             path: target.display().to_string(),
         })
     }
 
-    #[instrument(level = "trace")]
     fn exists(&self, target: &Path) -> bool {
         match self {
             Self::Default => fs::exists(target).unwrap_or(false),
@@ -733,7 +722,6 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
         }
     }
 
-    #[instrument(level = "trace")]
     fn read_directory(&self, target: &Path) -> Result<DirectoryReader, CommandError> {
         fs::read_dir(target)
             .map(Into::into)

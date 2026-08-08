@@ -173,7 +173,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     ///     return Ok(());
     /// }
     /// ```
-    #[instrument(level = "trace")]
+    #[instrument(level = "debug", skip_all)]
     pub fn execute(self) -> Result<(), CommandError> {
         match self {
             Self::Stow(mut a) => Self::process_stow(&a.data, &mut a.operation),
@@ -183,6 +183,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_stow(args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
         if !operation.is_directory(&args.target) {
             error!("Target directory does not exist or is not a directory");
@@ -461,6 +462,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_unstow(args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
         for package in &args.packages {
             info!(
@@ -475,6 +477,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_list(args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
         for package in &args.packages {
             info!(
@@ -581,6 +584,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_restow(args: &RestowData, operation: &mut TCommand) -> Result<(), CommandError> {
         info!("Restowing files");
         Self::process_unstow(args.as_ref(), operation)?;
