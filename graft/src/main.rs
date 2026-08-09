@@ -43,9 +43,9 @@
 //!
 //! # Configuration File
 //!
-//! `graft` can be configured using a `.graft.toml` file. It looks for this file in the current working directory or in the user's configuration directory. The file is in TOML format.
+//! `graft` can be configured using a `config.toml` file. It looks for this file in the current working directory or in the user's configuration directory. The file is in TOML format.
 //!
-//! Example `.graft.toml`:
+//! Example `config.toml`:
 //!
 //! ```toml
 //! version = 1
@@ -92,21 +92,21 @@
 //!
 //! On `MacOS`, the configuration files will be located in the following locations:
 //!
-//! - If `XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/graft/.graft.toml`
-//! - If `XDG_CONFIG_HOME` is not set, `~/Library/Preferences/graft/.graft.toml`
+//! - If `XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/graft/config.toml`
+//! - If `XDG_CONFIG_HOME` is not set, `~/Library/Preferences/graft/config.toml`
 //!
 //! ### Linux
 //!
 //! On Linux, the configuration files will be located in the following locations:
 //!
-//! - If `XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/graft/.graft.toml`
-//! - If `XDG_CONFIG_HOME` is not set, `~/.config/graft/`.
+//! - If `XDG_CONFIG_HOME` is set, `$XDG_CONFIG_HOME/graft/config.toml`
+//! - If `XDG_CONFIG_HOME` is not set, `~/.config/graft/config.toml`.
 //!
 //! ### Windows
 //!
 //! On Windows, the configuration files will be located in the following location:
 //!
-//! -`%APPDATA%\graft\.graft.toml`
+//! -`%APPDATA%\graft\config.toml`
 //!
 //! # Examples
 //!

@@ -6,8 +6,8 @@ A Rust implementation of the GNU stow utility for managing dotfiles.
 
 `graft` is a symlink farm manager which takes separate packages of software and/or data located in separate directories
 on the filesystem and makes them appear to be installed in the same place. It is primarily used for managing dotfiles,
-allowing you to keep your configuration files in a central repository while symlinking them to their expected
-locations (e.g., in your home directory).
+allowing you to keep your configuration files in a central repository while symlinking them to their expected locations
+(e.g., in your home directory).
 
 ### Features
 
@@ -146,10 +146,11 @@ source graft.nu
 
 ## Configuration
 
-`graft` can be configured using a `.graft.toml` file. It looks for this file in the current working directory or in the
-user's configuration directory. The file is in TOML format.
+`graft` can be configured using a `.graft.toml` file. It looks for this file in the current working directory. The
+global `graft` configuration file `config.toml` can also be used. It looks for this file in the user's configuration
+directory. The file is in TOML format.
 
-Example `.graft.toml`:
+Example `config.toml`:
 
 ```toml
 version = 1
@@ -208,27 +209,27 @@ linking_strategy = "short"
 #### Color
 
 - `enabled`: Whether to enable color support in logs (default: True)
-- `link`: The color of the link text (default: 'Green').
-    - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
-- `unlink`: The color of the unlink text (default: 'Red').
-    - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
-- `list`: The color of the list text (default: 'Cyan')
-    - Colors can be specified as either a string (e.g., 'Cyan') or a hex code (e.g., '#00FFFF').
-- `remove`: The color of the remove text (default: 'Red')
-    - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
-- `create`: The color of the create text (default: 'Green')
-    - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
-- `arrow`: The color of the arrow text (default: 'Blue')
-    - Colors can be specified as either a string (e.g., 'Blue') or a hex code (e.g., '#0000FF').
-- `source`: The color of the source text (default: 'Yellow')
-    - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
-- `target`: The color of the target text (default: 'Magenta')
-    - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
+- `link`: The color of the link text (default: '#A6DA95').
+  - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+- `unlink`: The color of the unlink text (default: '#ED8796').
+  - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
+- `list`: The color of the list text (default: '#91D7E3')
+  - Colors can be specified as either a string (e.g., 'Cyan') or a hex code (e.g., '#00FFFF').
+- `remove`: The color of the remove text (default: '#ED8796')
+  - Colors can be specified as either a string (e.g., 'Red') or a hex code (e.g., '#FF0000').
+- `create`: The color of the create text (default: '#A6DA95')
+  - Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+- `arrow`: The color of the arrow text (default: '#8AADF4')
+  - Colors can be specified as either a string (e.g., 'Blue') or a hex code (e.g., '#0000FF').
+- `source`: The color of the source text (default: '#EED49F')
+  - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
+- `target`: The color of the target text (default: '#F5BDE6')
+  - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
 
 #### Stow
 
 - `linking_strategy`: The linking strategy to use when stowing files (default: 'short')
-    - Possible values: 'short', 'full'
+  - Possible values: 'short', 'full'
 
 ### Configuration Location
 
@@ -236,24 +237,24 @@ linking_strategy = "short"
 
 On MacOS, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR/.graft.toml`
-- If XDG_CONFIG_HOME is set, `$XDG_CONFIG_HOME/graft/.graft.toml`
-- If XDG_CONFIG_HOME is not set, `~/Library/Application Support/graft/.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR/config.toml`
+- If XDG_CONFIG_HOME is set, `$XDG_CONFIG_HOME/graft/config.toml`
+- If XDG_CONFIG_HOME is not set, `~/Library/Application Support/graft/config.toml`
 
 #### Linux
 
 On Linux, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR/.graft.toml`
-- If XDG_CONFIG_HOME is set, `$XDG_CONFIG_HOME/graft/.graft.toml`
-- If XDG_CONFIG_HOME is not set, `~/.config/graft/.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `$GRAFT_CONFIG_DIR/config.toml`
+- If XDG_CONFIG_HOME is set, `$XDG_CONFIG_HOME/graft/config.toml`
+- If XDG_CONFIG_HOME is not set, `~/.config/graft/config.toml`
 
 #### Windows
 
 On Windows, the configuration files will be located in the following locations:
 
-- IF GRAFT_CONFIG_DIR is set, `%GRAFT_CONFIG_DIR%\.graft.toml`
-- `%APPDATA%\graft\.graft.toml`
+- IF GRAFT_CONFIG_DIR is set, `%GRAFT_CONFIG_DIR%\config.toml`
+- `%APPDATA%\graft\config.toml`
 
 ### Ignore Files
 

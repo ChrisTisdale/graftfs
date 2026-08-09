@@ -80,4 +80,9 @@ pub enum CliError {
     },
     #[snafu(display("Failed to write configuration"))]
     ConfigWriteError { source: crate::config::ConfigError },
+    #[snafu(display("Failed to create directory {folder}"))]
+    FolderCreationError {
+        folder: String,
+        source: std::io::Error,
+    },
 }

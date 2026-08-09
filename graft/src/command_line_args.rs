@@ -19,8 +19,9 @@
 use crate::CliError;
 use crate::cli_args::CliArgs;
 use crate::cli_errors::{
-    CommandBuildSnafu, CommandLineParsingSnafu, ConfigWriteSnafu, FileCreationSnafu, GenerateCompletionsSnafu,
-    InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, OutputFileCreationSnafu, ResolveSnafu,
+    CommandBuildSnafu, CommandLineParsingSnafu, ConfigWriteSnafu, FileCreationSnafu, FolderCreationSnafu,
+    GenerateCompletionsSnafu, InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, OutputFileCreationSnafu,
+    ResolveSnafu,
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{
@@ -417,6 +418,15 @@ impl ConfigPrinter {
         })?;
 
         if let Some(output) = &self.output {
+            let folder = output.parent();
+            if let Some(folder) = folder
+                && !fs::exists(folder).unwrap_or(false)
+            {
+                fs::create_dir_all(folder).with_context(|_| FolderCreationSnafu {
+                    folder: folder.display().to_string(),
+                })?;
+            }
+
             let mut file = File::create(output).with_context(|_| FileCreationSnafu {
                 file: output.display().to_string(),
             })?;

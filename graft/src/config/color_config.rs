@@ -30,14 +30,46 @@ pub struct ColorConfig {
 impl Default for ColorSettings {
     fn default() -> Self {
         Self {
-            link: Color::Green,
-            unlink: Color::Red,
-            list: Color::Cyan,
-            remove: Color::Red,
-            create: Color::Green,
-            arrow: Color::Blue,
-            source: Color::Yellow,
-            target: Color::Magenta,
+            link: Color::Rgb {
+                r: 166,
+                g: 218,
+                b: 149,
+            },
+            unlink: Color::Rgb {
+                r: 237,
+                g: 135,
+                b: 150,
+            },
+            list: Color::Rgb {
+                r: 145,
+                g: 215,
+                b: 227,
+            },
+            remove: Color::Rgb {
+                r: 237,
+                g: 135,
+                b: 150,
+            },
+            create: Color::Rgb {
+                r: 166,
+                g: 218,
+                b: 149,
+            },
+            arrow: Color::Rgb {
+                r: 138,
+                g: 173,
+                b: 244,
+            },
+            source: Color::Rgb {
+                r: 238,
+                g: 212,
+                b: 159,
+            },
+            target: Color::Rgb {
+                r: 245,
+                g: 189,
+                b: 230,
+            },
         }
     }
 }

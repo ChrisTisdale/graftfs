@@ -36,7 +36,7 @@ mod stow_config;
 mod version_error;
 
 use crate::config::config_error::{FileReadSnafu, ResolveSnafu, TomlSnafu, TomlWriteSnafu, WriteSnafu};
-pub use app_configuration::{AppConfiguration, DEFAULT_CONFIG_FILE};
+pub use app_configuration::{AppConfiguration, DEFAULT_CONFIG_FILE, GLOBAL_CONFIG_FILE};
 pub use app_directories::AppDirectories;
 pub use color_config::{ColorConfig, ColorSettings};
 pub use config_error::ConfigError;
@@ -52,7 +52,7 @@ use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use std::fmt::Display;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 pub use stow_config::{LinkingStrategy, StowConfig};
 
@@ -135,8 +135,9 @@ impl Config {
             return Self::read_config_file(file_path, &app_directories);
         }
 
-        let config_file = app_directories.config_dir.join(DEFAULT_CONFIG_FILE);
-        if let Ok(config_file) = path_resolver::resolve_path(&config_file)
+        let config_file = Self::get_global_config_file(&app_directories);
+        if let Some(config_file) = config_file
+            && let Ok(config_file) = path_resolver::resolve_path(&config_file)
             && fs::exists(&config_file).unwrap_or(false)
         {
             return Self::read_config_file(&config_file, &app_directories);
@@ -173,6 +174,25 @@ impl Config {
         let content = toml::to_string_pretty(self).context(TomlWriteSnafu)?;
         writer.write_all(content.as_bytes()).context(WriteSnafu)?;
         Ok(())
+    }
+
+    fn get_global_config_file(app_directories: &AppDirectories) -> Option<PathBuf> {
+        let resolved = path_resolver::resolve_path(&app_directories.config_dir);
+        if let Ok(resolved) = resolved
+            && fs::exists(&resolved).unwrap_or(false)
+        {
+            let config_file = resolved.join(GLOBAL_CONFIG_FILE);
+            if fs::exists(&config_file).unwrap_or(false) {
+                return Some(config_file);
+            }
+
+            let config_file = resolved.join(DEFAULT_CONFIG_FILE);
+            if fs::exists(&config_file).unwrap_or(false) {
+                return Some(config_file);
+            }
+        }
+
+        None
     }
 
     fn read_config_file(file_path: &Path, app_directories: &AppDirectories) -> Result<Self, ConfigError> {
