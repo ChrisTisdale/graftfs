@@ -123,8 +123,8 @@ fn process_dist(args: DistributeArgs) -> Result<(), anyhow::Error> {
         vec![ALL_FEATURES.to_string()]
     } else {
         args.features
-            .iter()
-            .map(|f| format!("--feature {f}"))
+            .into_iter()
+            .flat_map(|feature| ["--features".to_string(), feature])
             .collect()
     };
 
@@ -143,7 +143,7 @@ fn dist(additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Erro
 
     let with_nushell = additional_args
         .iter()
-        .any(|a| a.ends_with(" nushell") || a.eq(ALL_FEATURES));
+        .any(|a| a.eq(" nushell") || a.eq(ALL_FEATURES));
     dist_binary(additional_args, out_dir)?;
     dist_manpage(out_dir, with_nushell)?;
     Ok(())

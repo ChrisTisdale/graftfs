@@ -20,7 +20,7 @@ use crate::commands::ColorSupport;
 use crate::config::config_error::FileReadSnafu;
 use crate::config::logging_config::LoggingFormat;
 use crate::config::logging_error::LoggingSnafu;
-use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel};
+use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel, RegexStrategy};
 use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
@@ -199,6 +199,11 @@ impl AppConfiguration {
     #[must_use]
     pub const fn linking_strategy(&self) -> LinkingStrategy {
         self.config.stow.linking_strategy
+    }
+
+    #[must_use]
+    pub const fn regex_strategy(&self) -> RegexStrategy {
+        self.config.stow.regex_strategy
     }
 
     fn set_file_logger(

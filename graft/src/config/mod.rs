@@ -30,6 +30,7 @@ mod level_error;
 mod linking_strategy_error;
 mod overrides;
 pub mod path_resolver;
+mod regex_strategy_error;
 mod resolve_error;
 mod rotation_error;
 mod stow_config;
@@ -47,6 +48,7 @@ pub use linking_strategy_error::LinkingStrategyError;
 pub use logging_config::{LoggingConfig, LoggingFormat, LoggingLevel};
 pub use logging_error::LoggingError;
 pub use overrides::Overrides;
+pub use regex_strategy_error::RegexStrategyError;
 pub use resolve_error::ResolveError;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
@@ -54,7 +56,7 @@ use std::fmt::Display;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
-pub use stow_config::{LinkingStrategy, StowConfig};
+pub use stow_config::{LinkingStrategy, RegexStrategy, StowConfig};
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct Config {
@@ -296,6 +298,7 @@ mod test {
 
         [stow]
         linking_strategy = "short"
+        regex_strategy = "rust"
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
@@ -344,6 +347,7 @@ mod test {
 
         let expected_stow = StowConfig {
             linking_strategy: LinkingStrategy::Short,
+            regex_strategy: RegexStrategy::Rust,
         };
 
         assert_eq!(config.stow, expected_stow);
@@ -361,6 +365,7 @@ mod test {
 
             let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
             assert_eq!(config.version, ConfigFileVersion::V1);
+            assert_eq!(config.stow, StowConfig::default());
         }
     }
 
@@ -791,6 +796,68 @@ mod test {
 
             let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
             assert_eq!(config.stow.linking_strategy, strategy);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_ignores_regex_strategy_case() {
+        let allowed_strategies = vec![RegexStrategy::Rust, RegexStrategy::Pcre2];
+
+        for strategy in allowed_strategies {
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            regex_strategy = "{strategy}"
+            "#
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.regex_strategy, strategy);
+
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            regex_strategy = "{}"
+            "#,
+                strategy.to_string().to_uppercase()
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.regex_strategy, strategy);
+
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            regex_strategy = "{}"
+            "#,
+                strategy.to_string().to_lowercase()
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.regex_strategy, strategy);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_regex_strategy_can_use_numeric_value() {
+        let allowed_strategies = vec![RegexStrategy::Rust, RegexStrategy::Pcre2];
+
+        for strategy in allowed_strategies {
+            let config_content = format!(
+                "
+            version = 1
+
+            [stow]
+            regex_strategy = {}
+            ",
+                strategy as i64
+            );
+
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.regex_strategy, strategy);
         }
     }
 }
