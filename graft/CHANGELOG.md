@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.4.0 (2026-08-28)
+
+### Chore
+
+ - <csr-id-d0cf58ecec5cca14d80663e288c78e4dfea27906/> Updating dependencies
+   Updating to the latest dependencies
+ - <csr-id-ef14cc46758536fe18654bf25e4a65ef26843ac3/> Updating dependencies
+   Updating to the latest dependencies
+
+### New Features
+
+ - <csr-id-29bf89f1fb473cba8b917b74bf9ef13589756623/> Adding regex options
+   Adding support for providing regex options. Moving the default from pcre2 to a rust based regex parser. The regex options are configurable either via the command line or the configuration file. The regex parser is used for when stowing files to either filtering out ignored files or override the existing filter for files.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 15 calendar days.
+ - 19 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#30](https://github.com/ChrisTisdale/graftfs/issues/30)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#30](https://github.com/ChrisTisdale/graftfs/issues/30)**
+    - Adding regex options ([`29bf89f`](https://github.com/ChrisTisdale/graftfs/commit/29bf89f1fb473cba8b917b74bf9ef13589756623))
+ * **Uncategorized**
+    - Updating dependencies ([`d0cf58e`](https://github.com/ChrisTisdale/graftfs/commit/d0cf58ecec5cca14d80663e288c78e4dfea27906))
+    - Updating dependencies ([`ef14cc4`](https://github.com/ChrisTisdale/graftfs/commit/ef14cc46758536fe18654bf25e4a65ef26843ac3))
+</details>
+
 ## v1.3.0 (2026-08-09)
 
 ### Chore
@@ -26,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 2 calendar days.
+ - 4 commits contributed to the release over the course of 2 calendar days.
  - 5 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#28](https://github.com/ChrisTisdale/graftfs/issues/28)
@@ -40,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#28](https://github.com/ChrisTisdale/graftfs/issues/28)**
     - Logging Cleanup ([`b50225a`](https://github.com/ChrisTisdale/graftfs/commit/b50225a692de6e9ce23ca22250476cddabe34b27))
  * **Uncategorized**
+    - Release graftfs v1.3.0 ([`28a3aff`](https://github.com/ChrisTisdale/graftfs/commit/28a3aff0fd3a3787616eac9ab5589d1eb3c0691e))
     - Updating the global configuration file name ([`8dfd887`](https://github.com/ChrisTisdale/graftfs/commit/8dfd887ab96befe4b562acc0bec45ade0f004622))
     - Updating dependencies ([`936c363`](https://github.com/ChrisTisdale/graftfs/commit/936c36394b4e23ba2d818fd74d09959638928ff6))
 </details>
