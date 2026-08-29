@@ -183,6 +183,7 @@ target = "Magenta"
 
 [stow]
 linking_strategy = "short"
+regex_strategy = "rust"
 ```
 
 ### Version 1 Configuration Options
@@ -199,10 +200,13 @@ linking_strategy = "short"
 
 #### Logging
 
-- `level`: The logging level (default: 'Warning')
+- `level`: The logging level (default: 'warn')
+  - Possible values: 'off', 'error', 'warn', 'info', 'debug', 'trace'
 - `logging_path`: The path to the log file. When no file is provided, the logging will output to sterr (default: None)
-- `rotation`: The log rotation mode (default: None)
+- `rotation`: The log rotation mode (default: Daily)
+  - Possible values: 'daily', 'hourly'
 - `format`: The log format (default: 'Compact')
+  - Possible values: 'compact', 'pretty', 'json'
 - `max_log_files`: The maximum number of log files to keep (default: None)
 - `color_support`: Whether to enable color support in logs (default: True)
 
@@ -230,6 +234,8 @@ linking_strategy = "short"
 
 - `linking_strategy`: The linking strategy to use when stowing files (default: 'short')
   - Possible values: 'short', 'full'
+- `regex_strategy`: The regex strategy to use when checking against ignored and overriden files for stowing (default: 'rust')
+  - Possible values: 'rust', 'pcre2'
 
 ### Configuration Location
 
