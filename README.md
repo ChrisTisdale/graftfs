@@ -165,6 +165,8 @@ comment = '#'
 
 [logging]
 level = "Info"
+stream = "stderr"
+format = "compact"
 logging_path = "path/to/logs"
 rotation = "Daily"
 max_log_files = 30
@@ -202,11 +204,13 @@ regex_strategy = "rust"
 
 - `level`: The logging level (default: 'warn')
   - Possible values: 'off', 'error', 'warn', 'info', 'debug', 'trace'
+- `stream`: The stream to write to when logging to the console (default: 'stderr')
+  - Possible values: 'stdout', 'stderr'
+- `format`: The log format (default: 'Compact')
+  - Possible values: 'compact', 'pretty', 'json'
 - `logging_path`: The path to the log file. When no file is provided, the logging will output to sterr (default: None)
 - `rotation`: The log rotation mode (default: Daily)
   - Possible values: 'daily', 'hourly'
-- `format`: The log format (default: 'Compact')
-  - Possible values: 'compact', 'pretty', 'json'
 - `max_log_files`: The maximum number of log files to keep (default: None)
 - `color_support`: Whether to enable color support in logs (default: True)
 

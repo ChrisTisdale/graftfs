@@ -25,8 +25,8 @@ use crate::cli_errors::{
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{
-    AppConfiguration, Config, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel, RegexStrategy,
-    path_resolver,
+    AppConfiguration, Config, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel,
+    RegexStrategy, path_resolver,
 };
 use crate::shell::Shell;
 use clap::builder::Styles;
@@ -119,14 +119,21 @@ struct LoggingArgs {
         ignore_case = true,
         value_name = "LEVEL"
     )]
-    log_level: Option<LoggingLevel>,
+    level: Option<LoggingLevel>,
     #[arg(
         long = "log-format",
         help = "Set the logging format.",
         ignore_case = true,
         value_name = "FORMAT"
     )]
-    log_format: Option<LoggingFormat>,
+    format: Option<LoggingFormat>,
+    #[arg(
+        long = "log-stream",
+        help = "Set the logging stream when logging to the console.",
+        ignore_case = true,
+        value_name = "STREAM"
+    )]
+    stream: Option<ConsoleLoggingStream>,
 }
 
 #[derive(Args, Default, Clone, PartialEq, Eq)]
@@ -618,7 +625,11 @@ impl CommandLineProcessor {
         )?;
 
         let guard = app_config
-            .setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)
+            .setup_logger(
+                stow_args.logging.level,
+                stow_args.logging.format,
+                stow_args.logging.stream,
+            )
             .context(LoggingSnafu)?;
 
         let linking_strategy = stow_args
@@ -658,8 +669,9 @@ impl CommandLineProcessor {
 
         let guard = app_config
             .setup_logger(
-                unstow_args.logging.log_level,
-                unstow_args.logging.log_format,
+                unstow_args.logging.level,
+                unstow_args.logging.format,
+                unstow_args.logging.stream,
             )
             .context(LoggingSnafu)?;
 
@@ -686,7 +698,11 @@ impl CommandLineProcessor {
         )?;
 
         let guard = app_config
-            .setup_logger(stow_args.logging.log_level, stow_args.logging.log_format)
+            .setup_logger(
+                stow_args.logging.level,
+                stow_args.logging.format,
+                stow_args.logging.stream,
+            )
             .context(LoggingSnafu)?;
 
         let linking_strategy = stow_args
@@ -725,7 +741,11 @@ impl CommandLineProcessor {
         )?;
 
         let guard = app_config
-            .setup_logger(list_args.logging.log_level, list_args.logging.log_format)
+            .setup_logger(
+                list_args.logging.level,
+                list_args.logging.format,
+                list_args.logging.stream,
+            )
             .context(LoggingSnafu)?;
 
         let packages = Self::get_package_directories(&directory, &list_args.directory.packages)?;

@@ -16,17 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::config::LevelError;
+use crate::config::console_logging_stream_error::ConsoleLoggingStreamError;
 use crate::config::format_error::FormatError;
+use crate::config::logging_error::LoggingSnafu;
 use crate::config::rotation_error::RotationError;
+use crate::config::{LevelError, LoggingError};
 use clap::ValueEnum;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, de};
+use snafu::ResultExt;
 use std::fmt::Display;
+use std::io::{stderr, stdout};
+use std::ops::BitOr;
 use std::path::PathBuf;
 use std::str::FromStr;
+use supports_color::Stream;
 use tracing::level_filters::LevelFilter;
+use tracing::subscriber;
 use tracing_appender::rolling::Rotation;
+use tracing_subscriber::fmt::format::{FmtSpan, Format};
+use tracing_subscriber::fmt::{FormatFields, MakeWriter, SubscriberBuilder};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
@@ -160,6 +169,124 @@ impl From<LoggingLevel> for LevelFilter {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
+#[repr(i64)]
+pub enum ConsoleLoggingStream {
+    Stdout = 1,
+    #[default]
+    Stderr,
+}
+
+impl ConsoleLoggingStream {
+    pub(crate) fn setup_logger(
+        self,
+        level_filter: LevelFilter,
+        logging_format: LoggingFormat,
+        color_support: bool,
+    ) -> Result<(), LoggingError> {
+        match self {
+            Self::Stdout => logging_format.setup_logger(level_filter, stdout, color_support),
+            Self::Stderr => logging_format.setup_logger(level_filter, stderr, color_support),
+        }
+    }
+}
+
+impl FromStr for ConsoleLoggingStream {
+    type Err = ConsoleLoggingStreamError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            s if s.eq_ignore_ascii_case("stdout") => Ok(Self::Stdout),
+            s if s.eq_ignore_ascii_case("stderr") => Ok(Self::Stderr),
+            _ => Err(ConsoleLoggingStreamError::InvalidStreamString {
+                stream: s.to_string(),
+            }),
+        }
+    }
+}
+
+impl TryFrom<i64> for ConsoleLoggingStream {
+    type Error = ConsoleLoggingStreamError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Stdout),
+            2 => Ok(Self::Stderr),
+            _ => Err(ConsoleLoggingStreamError::InvalidStream { stream: value }),
+        }
+    }
+}
+
+impl Serialize for ConsoleLoggingStream {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Self::Stdout => "stdout",
+            Self::Stderr => "stderr",
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ConsoleLoggingStream {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ConsoleLoggingStreamVisitor;
+
+        impl Visitor<'_> for ConsoleLoggingStreamVisitor {
+            type Value = ConsoleLoggingStream;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("stdout or stderr")
+            }
+
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                v.try_into().map_err(de::Error::custom)
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                v.parse().map_err(de::Error::custom)
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                self.visit_str(&v)
+            }
+        }
+
+        deserializer.deserialize_any(ConsoleLoggingStreamVisitor)
+    }
+}
+
+impl Display for ConsoleLoggingStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stdout => write!(f, "stdout"),
+            Self::Stderr => write!(f, "stderr"),
+        }
+    }
+}
+
+impl From<Stream> for ConsoleLoggingStream {
+    fn from(value: Stream) -> Self {
+        match value {
+            Stream::Stdout => Self::Stdout,
+            Stream::Stderr => Self::Stderr,
+        }
+    }
+}
+
+impl From<ConsoleLoggingStream> for Stream {
+    fn from(value: ConsoleLoggingStream) -> Self {
+        match value {
+            ConsoleLoggingStream::Stdout => Self::Stdout,
+            ConsoleLoggingStream::Stderr => Self::Stderr,
+        }
+    }
+}
+
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[repr(i64)]
 pub enum RotationType {
@@ -266,6 +393,66 @@ pub enum LoggingFormat {
     Json,
 }
 
+impl LoggingFormat {
+    pub(crate) fn setup_logger<T>(
+        self,
+        level_filter: LevelFilter,
+        stream: T,
+        color_support: bool,
+    ) -> Result<(), LoggingError>
+    where
+        T: for<'writer> MakeWriter<'writer> + Send + Sync + 'static,
+    {
+        match self {
+            Self::Compact => {
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), level_filter)
+                    .with_ansi(color_support)
+                    .with_writer(stream)
+                    .finish();
+
+                subscriber::set_global_default(logger).context(LoggingSnafu)?;
+            }
+            Self::Pretty => {
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), level_filter)
+                    .with_ansi(color_support)
+                    .with_writer(stream)
+                    .finish();
+
+                subscriber::set_global_default(logger).context(LoggingSnafu)?;
+            }
+            Self::Json => {
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), level_filter)
+                    .with_ansi(color_support)
+                    .with_writer(stream)
+                    .finish();
+
+                subscriber::set_global_default(logger).context(LoggingSnafu)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn setup_subscriber_builder<TFields, TFormat>(
+        subscriber_builder: SubscriberBuilder<TFields, Format<TFormat>>,
+        log_level: LevelFilter,
+    ) -> SubscriberBuilder<TFields, Format<TFormat>>
+    where
+        TFields: for<'writer> FormatFields<'writer> + 'static,
+    {
+        subscriber_builder
+            .with_level(true)
+            .with_max_level(log_level)
+            .with_file(true)
+            .log_internal_errors(true)
+            .with_span_events(FmtSpan::ENTER.bitor(FmtSpan::CLOSE).bitor(FmtSpan::EXIT))
+            .with_line_number(false)
+            .with_thread_ids(true)
+            .with_thread_names(true)
+            .with_target(true)
+    }
+}
+
 impl FromStr for LoggingFormat {
     type Err = FormatError;
 
@@ -361,6 +548,8 @@ pub struct LoggingConfig {
     #[serde(default)]
     pub level: LoggingLevel,
     #[serde(default)]
+    pub stream: ConsoleLoggingStream,
+    #[serde(default)]
     pub format: LoggingFormat,
     #[serde(default)]
     pub rotation: RotationType,
@@ -376,6 +565,7 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: LoggingLevel::default(),
+            stream: ConsoleLoggingStream::default(),
             format: LoggingFormat::default(),
             rotation: RotationType::default(),
             file: None,
@@ -390,8 +580,9 @@ impl Display for LoggingConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "LoggingConfig {{ level: {}, file: {:?}, logging_path: {:?}, rotation: {}, logging_format: {}, max_log_files: {}, color_support: {} }}",
+            "LoggingConfig {{ level: {}, stream: {}, file: {:?}, logging_path: {:?}, rotation: {}, logging_format: {}, max_log_files: {}, color_support: {} }}",
             self.level,
+            self.stream,
             self.file,
             self.logging_path,
             self.rotation,
@@ -620,5 +811,41 @@ mod test {
     fn logging_format_json_from_i64_json() {
         let logging_format = LoggingFormat::try_from(3).unwrap();
         assert_eq!(logging_format, LoggingFormat::Json);
+    }
+
+    #[test]
+    fn console_logging_stream_from_str_stdout() {
+        let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str("stdout").unwrap();
+        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stdout);
+    }
+
+    #[test]
+    fn console_logging_stream_from_str_stderr() {
+        let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str("stderr").unwrap();
+        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stderr);
+    }
+
+    #[test]
+    fn console_logging_stream_from_str_invalid() {
+        let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str("invalid");
+        assert!(console_logging_stream.is_err());
+    }
+
+    #[test]
+    fn console_logging_stream_from_i64_stdout() {
+        let console_logging_stream = ConsoleLoggingStream::try_from(1).unwrap();
+        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stdout);
+    }
+
+    #[test]
+    fn console_logging_stream_from_i64_stderr() {
+        let console_logging_stream = ConsoleLoggingStream::try_from(2).unwrap();
+        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stderr);
+    }
+
+    #[test]
+    fn console_logging_stream_from_i64_invalid() {
+        let console_logging_stream = ConsoleLoggingStream::try_from(3);
+        assert!(console_logging_stream.is_err());
     }
 }

@@ -18,23 +18,17 @@
 
 use crate::commands::ColorSupport;
 use crate::config::config_error::FileReadSnafu;
-use crate::config::logging_config::LoggingFormat;
-use crate::config::logging_error::LoggingSnafu;
+use crate::config::logging_config::{ConsoleLoggingStream, LoggingFormat};
 use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel, RegexStrategy};
 use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
-use std::io::stderr;
-use std::ops::BitOr;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 use supports_color::Stream;
-use tracing::subscriber;
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_appender::rolling::RollingFileAppender;
 use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt::format::{FmtSpan, Format};
-use tracing_subscriber::fmt::{FormatFields, SubscriberBuilder};
 
 pub const GLOBAL_CONFIG_FILE: &str = "config.toml";
 
@@ -160,7 +154,7 @@ impl AppConfiguration {
     ///     use std::env;
     ///
     ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
-    ///     configuration.setup_logger(None, None)?;
+    ///     configuration.setup_logger(None, None, None)?;
     ///     Ok(())
     /// }
     /// ```
@@ -168,6 +162,7 @@ impl AppConfiguration {
         &self,
         override_level: Option<LoggingLevel>,
         override_format: Option<LoggingFormat>,
+        override_stream: Option<ConsoleLoggingStream>,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
         let config_level = override_level.unwrap_or(self.config.logging.level);
         let config_format = override_format.unwrap_or(self.config.logging.format);
@@ -175,6 +170,7 @@ impl AppConfiguration {
             return Ok(None);
         }
 
+        let stream = override_stream.unwrap_or(self.config.logging.stream);
         self.config
             .logging
             .file
@@ -182,7 +178,7 @@ impl AppConfiguration {
             .and_then(|d| self.get_rolling_appender(d))
             .map(tracing_appender::non_blocking)
             .map_or_else(
-                || self.set_console_logger(config_level.into(), config_format),
+                || self.set_console_logger(config_level.into(), config_format, stream),
                 |(appender, guard)| Self::set_file_logger(config_level.into(), config_format, appender, guard),
             )
     }
@@ -212,30 +208,7 @@ impl AppConfiguration {
         appender: NonBlocking,
         guard: WorkerGuard,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
-        match logging_format {
-            LoggingFormat::Compact => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), config_level)
-                    .with_ansi(false)
-                    .with_writer(appender)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Pretty => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), config_level)
-                    .with_ansi(false)
-                    .with_writer(appender)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Json => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), config_level)
-                    .with_ansi(false)
-                    .with_writer(appender)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-        }
-
+        logging_format.setup_logger(config_level, appender, false)?;
         Ok(Some(guard))
     }
 
@@ -243,32 +216,10 @@ impl AppConfiguration {
         &self,
         config_level: LevelFilter,
         logging_format: LoggingFormat,
+        stream: ConsoleLoggingStream,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
-        let color_support = self.config.logging.color_support && supports_color::on(Stream::Stderr).is_some();
-        match logging_format {
-            LoggingFormat::Compact => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), config_level)
-                    .with_ansi(color_support)
-                    .with_writer(stderr)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Pretty => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), config_level)
-                    .with_ansi(color_support)
-                    .with_writer(stderr)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Json => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), config_level)
-                    .with_ansi(color_support)
-                    .with_writer(stderr)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-        }
-
+        let color_support = self.config.logging.color_support && supports_color::on(stream.into()).is_some();
+        stream.setup_logger(config_level, logging_format, color_support)?;
         Ok(None)
     }
 
@@ -399,24 +350,5 @@ impl AppConfiguration {
             .filename_prefix(file_name)
             .build(root)
             .ok()
-    }
-
-    fn setup_subscriber_builder<TFields, TFormat>(
-        subscriber_builder: SubscriberBuilder<TFields, Format<TFormat>>,
-        log_level: LevelFilter,
-    ) -> SubscriberBuilder<TFields, Format<TFormat>>
-    where
-        TFields: for<'writer> FormatFields<'writer> + 'static,
-    {
-        subscriber_builder
-            .with_level(true)
-            .with_max_level(log_level)
-            .with_file(true)
-            .log_internal_errors(true)
-            .with_span_events(FmtSpan::ENTER.bitor(FmtSpan::CLOSE).bitor(FmtSpan::EXIT))
-            .with_line_number(false)
-            .with_thread_ids(true)
-            .with_thread_names(true)
-            .with_target(true)
     }
 }

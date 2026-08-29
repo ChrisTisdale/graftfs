@@ -25,6 +25,7 @@ mod logging_config;
 mod logging_error;
 
 mod color_config;
+mod console_logging_stream_error;
 mod format_error;
 mod level_error;
 mod linking_strategy_error;
@@ -45,7 +46,7 @@ pub use config_file_version::ConfigFileVersion;
 pub use ignored::Ignored;
 pub use level_error::LevelError;
 pub use linking_strategy_error::LinkingStrategyError;
-pub use logging_config::{LoggingConfig, LoggingFormat, LoggingLevel};
+pub use logging_config::{ConsoleLoggingStream, LoggingConfig, LoggingFormat, LoggingLevel};
 pub use logging_error::LoggingError;
 pub use overrides::Overrides;
 pub use regex_strategy_error::RegexStrategyError;
@@ -259,7 +260,7 @@ impl Config {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::logging_config::{LoggingLevel, RotationType};
+    use crate::config::logging_config::{ConsoleLoggingStream, LoggingLevel, RotationType};
     use crossterm::style::Color;
     use std::path::PathBuf;
 
@@ -278,6 +279,7 @@ mod test {
 
         [logging]
         level = "info"
+        stream = "stderr"
         file = "temp.log"
         logging_path = "log_dir"
         rotation = "daily"
@@ -317,6 +319,7 @@ mod test {
         assert_eq!(config.overrides, expected_override);
         let expected_logging = LoggingConfig {
             level: LoggingLevel::Info,
+            stream: ConsoleLoggingStream::Stderr,
             file: Some(PathBuf::from("temp.log")),
             logging_path: Some(PathBuf::from("log_dir")),
             rotation: RotationType::Daily,
@@ -603,6 +606,57 @@ mod test {
 
             let config: Config = toml::from_str(config_content.as_str()).expect("Failed to parse TOML");
             assert_eq!(config.logging.format, format);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_ignores_console_logging_stream_case() {
+        let stream_types = vec![ConsoleLoggingStream::Stdout, ConsoleLoggingStream::Stderr];
+        for stream in stream_types {
+            let config_content = format!(
+                r#"
+                version = 1
+
+                [logging]
+                stream = "{}"
+                "#,
+                stream.to_string().to_lowercase()
+            );
+
+            let config: Config = toml::from_str(config_content.as_str()).expect("Failed to parse TOML");
+            assert_eq!(config.logging.stream, stream);
+
+            let config_content = format!(
+                r#"
+                version = 1
+
+                [logging]
+                stream = "{}"
+                "#,
+                stream.to_string().to_uppercase()
+            );
+
+            let config: Config = toml::from_str(config_content.as_str()).expect("Failed to parse TOML");
+            assert_eq!(config.logging.stream, stream);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_console_logging_stream_can_use_numeric_value() {
+        let stream_types = vec![ConsoleLoggingStream::Stdout, ConsoleLoggingStream::Stderr];
+        for stream in stream_types {
+            let config_content = format!(
+                r"
+                version = 1
+
+                [logging]
+                stream = {}
+                ",
+                stream as i64
+            );
+
+            let config: Config = toml::from_str(config_content.as_str()).expect("Failed to parse TOML");
+            assert_eq!(config.logging.stream, stream);
         }
     }
 
