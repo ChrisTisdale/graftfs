@@ -105,7 +105,7 @@ struct DirectoryArgs {
         short = 'p',
         long = "package",
         value_name = "PACKAGE",
-        help = "Specify a package name to unstow. This can be used multiple times to specify multiple packages."
+        help = "Specify a package name to use. This can be used multiple times to specify multiple packages."
     )]
     packages: Vec<String>,
 }
@@ -590,7 +590,7 @@ impl CommandLineProcessor {
             return Ok(vec![source.to_path_buf()]);
         }
 
-        let mut package_directories = Vec::with_capacity(packages.len());
+        let mut package_directories = HashSet::with_capacity(packages.len());
         for package in packages {
             let path = Path::new(package);
             let path = path_resolver::resolve_home_path(path).with_context(|_| ResolveSnafu {
@@ -601,11 +601,10 @@ impl CommandLineProcessor {
                 .join(path)
                 .canonicalize()
                 .with_context(|_| InvalidPathSnafu { path: package })?;
-            package_directories.push(package_directory);
+            package_directories.insert(package_directory);
         }
 
-        package_directories.dedup();
-        Ok(package_directories)
+        Ok(Vec::from_iter(package_directories))
     }
 
     fn stow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
