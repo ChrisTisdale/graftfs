@@ -20,7 +20,7 @@ use crate::commands::regex_matcher::RegexMatcher;
 use crate::config::{LinkingStrategy, RegexStrategy};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
-use tracing::{debug, warn};
+use tracing::debug;
 
 #[derive(Default)]
 pub struct StowFilter {
@@ -54,7 +54,7 @@ pub struct StowData {
 
 impl StowOptions {
     #[must_use]
-    pub fn new<T: AsRef<str> + Display + Debug, I: Iterator<Item = T>, O: Iterator<Item = T>>(
+    pub fn new<T: AsRef<str> + Display, I: Iterator<Item = T>, O: Iterator<Item = T>>(
         dot_file_prefix: Option<String>,
         linking_strategy: LinkingStrategy,
         regex_strategy: RegexStrategy,
@@ -80,38 +80,14 @@ impl StowOptions {
         }
     }
 
-    fn build_ignore_matcher<T: AsRef<str> + Display + Debug>(
-        regex_strategy: RegexStrategy,
-        item: T,
-    ) -> Option<RegexMatcher> {
-        Self::build_matcher("ignored", regex_strategy, item)
+    fn build_ignore_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<RegexMatcher> {
+        debug!("Adding ignored matched item: {item}");
+        RegexMatcher::try_create_matcher(regex_strategy, item)
     }
 
-    fn build_override_matcher<T: AsRef<str> + Display + Debug>(
-        regex_strategy: RegexStrategy,
-        item: T,
-    ) -> Option<RegexMatcher> {
-        Self::build_matcher("override", regex_strategy, item)
-    }
-
-    fn build_matcher<T: AsRef<str> + Display + Debug>(
-        match_type: &str,
-        regex_strategy: RegexStrategy,
-        item: T,
-    ) -> Option<RegexMatcher> {
-        debug!("Adding {match_type} matched item: {item}");
-        match regex_strategy {
-            RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
-                .build(item.as_ref())
-                .map(RegexMatcher::Rust)
-                .map_err(|e| warn!("Failed to create Rust regex matcher for {item}: {e}"))
-                .ok(),
-            RegexStrategy::Pcre2 => grep::pcre2::RegexMatcherBuilder::new()
-                .build(item.as_ref())
-                .map(RegexMatcher::Pcre2)
-                .map_err(|e| warn!("Failed to create PCRE2 regex matcher for {item}: {e}"))
-                .ok(),
-        }
+    fn build_override_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<RegexMatcher> {
+        debug!("Adding override matched item: {item}");
+        RegexMatcher::try_create_matcher(regex_strategy, item)
     }
 }
 

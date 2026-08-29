@@ -18,12 +18,32 @@
 
 use crate::commands::matcher_error::{MatchError, Pcre2Snafu, RustSnafu};
 use crate::commands::regex_captures::RegexCaptures;
+use crate::config::RegexStrategy;
 use grep::matcher::{Match, Matcher};
 use snafu::ResultExt;
+use std::fmt::Display;
+use tracing::warn;
 
 pub enum RegexMatcher {
     Rust(grep::regex::RegexMatcher),
     Pcre2(grep::pcre2::RegexMatcher),
+}
+
+impl RegexMatcher {
+    pub fn try_create_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<Self> {
+        match regex_strategy {
+            RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
+                .build(item.as_ref())
+                .map(RegexMatcher::Rust)
+                .map_err(|e| warn!("Failed to create Rust regex matcher for {item}: {e}"))
+                .ok(),
+            RegexStrategy::Pcre2 => grep::pcre2::RegexMatcherBuilder::new()
+                .build(item.as_ref())
+                .map(RegexMatcher::Pcre2)
+                .map_err(|e| warn!("Failed to create PCRE2 regex matcher for {item}: {e}"))
+                .ok(),
+        }
+    }
 }
 
 impl Matcher for RegexMatcher {
