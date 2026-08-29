@@ -25,7 +25,8 @@ use crate::cli_errors::{
 };
 use crate::commands::{CommandBuilder, CommandOperationImpl};
 use crate::config::{
-    AppConfiguration, Config, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel, path_resolver,
+    AppConfiguration, Config, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel, RegexStrategy,
+    path_resolver,
 };
 use crate::shell::Shell;
 use clap::builder::Styles;
@@ -171,6 +172,14 @@ struct StowArgs {
         value_name = "STRATEGY"
     )]
     linking_strategy: Option<LinkingStrategy>,
+    #[arg(
+        short = 'r',
+        long = "regex-strategy",
+        ignore_case = true,
+        help = "Specify the regex strategy for stowing files.",
+        value_name = "STRATEGY"
+    )]
+    regex_strategy: Option<RegexStrategy>,
 }
 
 #[derive(Args, Default, Clone, PartialEq, Eq)]
@@ -617,6 +626,10 @@ impl CommandLineProcessor {
             .linking_strategy
             .unwrap_or_else(|| app_config.linking_strategy());
 
+        let regex_strategy = stow_args
+            .regex_strategy
+            .unwrap_or_else(|| app_config.regex_strategy());
+
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .stow()
@@ -627,6 +640,7 @@ impl CommandLineProcessor {
             .with_target(target)
             .with_packages(packages)
             .with_linking_strategy(linking_strategy)
+            .with_regex_strategy(regex_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Stow" })?;
 
@@ -680,6 +694,10 @@ impl CommandLineProcessor {
             .linking_strategy
             .unwrap_or_else(|| app_config.linking_strategy());
 
+        let regex_strategy = stow_args
+            .regex_strategy
+            .unwrap_or_else(|| app_config.regex_strategy());
+
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, &app_config)
             .restow()
@@ -690,6 +708,7 @@ impl CommandLineProcessor {
             .with_target(target)
             .with_packages(packages)
             .with_linking_strategy(linking_strategy)
+            .with_regex_strategy(regex_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Restow" })?;
 

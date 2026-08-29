@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::config::LinkingStrategy;
-use grep::pcre2::{RegexMatcher, RegexMatcherBuilder};
+use crate::commands::regex_matcher::RegexMatcher;
+use crate::config::{LinkingStrategy, RegexStrategy};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
-use tracing::{debug, warn};
+use tracing::debug;
 
 #[derive(Default)]
 pub struct StowFilter {
@@ -54,17 +54,24 @@ pub struct StowData {
 
 impl StowOptions {
     #[must_use]
-    pub fn new<T: AsRef<str> + Display + Debug, I: Iterator<Item = T>, O: Iterator<Item = T>>(
+    pub fn new<T: AsRef<str> + Display, I: Iterator<Item = T>, O: Iterator<Item = T>>(
         dot_file_prefix: Option<String>,
         linking_strategy: LinkingStrategy,
+        regex_strategy: RegexStrategy,
         no_folding: bool,
         ignored: I,
         overrides: O,
     ) -> Self {
         debug!("Creating ignore matches");
-        let ignored = ignored.filter_map(Self::build_ignore_matcher).collect();
+        let ignored = ignored
+            .filter_map(|i| Self::build_ignore_matcher(regex_strategy, i))
+            .collect();
+
         debug!("Creating override matches");
-        let overrides = overrides.filter_map(Self::build_override_matcher).collect();
+        let overrides = overrides
+            .filter_map(|o| Self::build_override_matcher(regex_strategy, o))
+            .collect();
+
         Self {
             no_folding,
             linking_strategy,
@@ -73,23 +80,14 @@ impl StowOptions {
         }
     }
 
-    fn build_ignore_matcher<T: AsRef<str> + Display + Debug>(item: T) -> Option<RegexMatcher> {
-        Self::build_matcher("ignored", item)
+    fn build_ignore_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<RegexMatcher> {
+        debug!("Adding ignored matched item: {item}");
+        RegexMatcher::try_create_matcher(regex_strategy, item)
     }
 
-    fn build_override_matcher<T: AsRef<str> + Display + Debug>(item: T) -> Option<RegexMatcher> {
-        Self::build_matcher("override", item)
-    }
-
-    fn build_matcher<T: AsRef<str> + Display + Debug>(match_type: &str, item: T) -> Option<RegexMatcher> {
-        debug!("Adding {match_type} matched item: {item}");
-        match RegexMatcherBuilder::new().build(item.as_ref()) {
-            Ok(m) => Some(m),
-            Err(e) => {
-                warn!("Failed to create file matcher: {e}");
-                None
-            }
-        }
+    fn build_override_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<RegexMatcher> {
+        debug!("Adding override matched item: {item}");
+        RegexMatcher::try_create_matcher(regex_strategy, item)
     }
 }
 

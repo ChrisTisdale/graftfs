@@ -16,27 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-mod color_support;
-mod command;
-mod command_build_error;
-mod command_builder;
-mod command_error;
-mod command_operation;
-mod list_data;
-mod matcher_error;
-mod regex_captures;
-mod regex_matcher;
-mod restow_data;
-mod stow_data;
-mod unstow_data;
+use snafu::Snafu;
 
-pub use color_support::ColorSupport;
-pub use command::Command;
-pub use command_build_error::CommandBuildError;
-pub use command_builder::CommandBuilder;
-pub use command_error::CommandError;
-pub use command_operation::{CommandOperation, CommandOperationImpl, DirectoryReader};
-pub use list_data::ListData;
-pub use restow_data::RestowData;
-pub use stow_data::{StowData, StowOptions};
-pub use unstow_data::UnstowData;
+#[derive(Debug, Snafu)]
+#[non_exhaustive]
+pub enum RegexStrategyError {
+    #[snafu(display("Invalid regex strategy: {strategy}"))]
+    InvalidRegexStrategy { strategy: i64 },
+    #[snafu(display("Invalid regex strategy: {strategy}"))]
+    InvalidRegexStrategyString { strategy: String },
+}
