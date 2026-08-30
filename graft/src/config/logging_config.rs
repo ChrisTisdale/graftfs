@@ -28,14 +28,18 @@ use snafu::ResultExt;
 use std::fmt::Display;
 use std::io::{stderr, stdout};
 use std::ops::BitOr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::{env, fs};
 use supports_color::Stream;
 use tracing::level_filters::LevelFilter;
 use tracing::subscriber;
-use tracing_appender::rolling::Rotation;
+use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::fmt::format::{FmtSpan, Format};
 use tracing_subscriber::fmt::{FormatFields, MakeWriter, SubscriberBuilder};
+
+const DEFAULT_LOG_FILE: &str = "graft.log";
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
@@ -559,6 +563,138 @@ pub struct LoggingConfig {
     pub max_log_files: usize,
     #[serde(default = "default_color_support")]
     pub color_support: bool,
+}
+
+impl LoggingConfig {
+    /// Setting up logging for the application using the provided configuration
+    ///
+    /// # Arguments
+    ///
+    /// * `override_level`: The level to override the configuration level with
+    /// * `override_format`: The format to override the configuration format with
+    /// * `override_stream`: The stream to override the configuration stream with
+    ///
+    /// returns: `Result<Option<WorkerGuard>`, `LoggingError`>
+    /// The guard for the log file, if any, is returned
+    ///
+    /// # Errors
+    /// * `LoggingError::LoggingError` - Returned when the logger cannot be set up
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use graft::config::{LoggingConfig, LoggingError};
+    ///
+    /// fn main() -> Result<(), Box<dyn Error>> {
+    ///     use std::env;
+    ///
+    ///     let config = LoggingConfig::default();
+    ///     config.setup_logger(None, None, None)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn setup_logger(
+        &self,
+        override_level: Option<LoggingLevel>,
+        override_format: Option<LoggingFormat>,
+        override_stream: Option<ConsoleLoggingStream>,
+    ) -> Result<Option<WorkerGuard>, LoggingError> {
+        let config_level = override_level.unwrap_or(self.level);
+        let config_format = override_format.unwrap_or(self.format);
+        if config_level == LoggingLevel::Off {
+            return Ok(None);
+        }
+
+        let stream = override_stream.unwrap_or(self.stream);
+        self.file
+            .as_ref()
+            .and_then(|d| self.get_rolling_appender(d))
+            .map(tracing_appender::non_blocking)
+            .map_or_else(
+                || self.set_console_logger(config_level.into(), config_format, stream),
+                |(appender, guard)| Self::set_file_logger(config_level.into(), config_format, appender, guard),
+            )
+    }
+
+    fn set_console_logger(
+        &self,
+        config_level: LevelFilter,
+        logging_format: LoggingFormat,
+        stream: ConsoleLoggingStream,
+    ) -> Result<Option<WorkerGuard>, LoggingError> {
+        let color_support = self.color_support && supports_color::on(stream.into()).is_some();
+        stream.setup_logger(config_level, logging_format, color_support)?;
+        Ok(None)
+    }
+
+    fn set_file_logger(
+        config_level: LevelFilter,
+        logging_format: LoggingFormat,
+        appender: NonBlocking,
+        guard: WorkerGuard,
+    ) -> Result<Option<WorkerGuard>, LoggingError> {
+        logging_format.setup_logger(config_level, appender, false)?;
+        Ok(Some(guard))
+    }
+
+    fn get_rolling_appender(&self, path: &Path) -> Option<RollingFileAppender> {
+        self.logging_path
+            .as_ref()
+            .and_then(Self::get_file_path)
+            .and_then(|dir| Self::try_make_log_path(path, &dir))
+            .map_or_else(|| None, |root| self.setup_rolling_appender(path, root))
+    }
+
+    fn setup_rolling_appender(&self, path: &Path, root: String) -> Option<RollingFileAppender> {
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(DEFAULT_LOG_FILE)
+            .to_string();
+        self.map_file_appender(file_name, root)
+    }
+
+    fn try_make_log_path(path: &Path, dir: &Path) -> Option<String> {
+        path.parent()
+            .map(|d| Self::get_log_path(dir, d))
+            .and_then(|d| Self::create_directory_if_necessary(&d).ok().map(|()| d))
+            .and_then(|n| n.to_str().map(ToString::to_string))
+            .or_else(|| dir.to_str().map(ToString::to_string))
+    }
+
+    fn get_log_path(root: &Path, dir: &Path) -> PathBuf {
+        if dir.is_absolute() {
+            dir.to_owned()
+        } else {
+            root.join(dir)
+        }
+    }
+
+    fn create_directory_if_necessary(dir: &Path) -> Result<(), std::io::Error> {
+        if !dir.exists() {
+            fs::create_dir_all(dir)?;
+        }
+
+        Ok(())
+    }
+
+    fn get_file_path(p: &PathBuf) -> Option<PathBuf> {
+        if p.is_absolute() {
+            Some(p.to_owned())
+        } else {
+            env::current_dir().map_or(None, |c| Some(c.join(p)))
+        }
+    }
+
+    fn map_file_appender(&self, file_name: String, root: String) -> Option<RollingFileAppender> {
+        RollingFileAppender::builder()
+            .rotation(self.rotation.into())
+            .max_log_files(self.max_log_files)
+            .filename_prefix(file_name)
+            .build(root)
+            .ok()
+    }
 }
 
 impl Default for LoggingConfig {
