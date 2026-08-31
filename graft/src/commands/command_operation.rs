@@ -346,11 +346,16 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
 ///
 /// - `Default`: The default implementation type, used when no specific operation is specified.
 /// - `Simulated`: Represents a simulated implementation type, often used for testing or scenarios where the operation doesn't interact with a real system.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CommandOperationImpl {
-    #[default]
-    Default,
+    Default(Option<Box<ColorSupport>>),
     Simulated(Box<SimulatedData>),
+}
+
+impl Default for CommandOperationImpl {
+    fn default() -> Self {
+        Self::Default(None)
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -575,7 +580,11 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
         info!("Linking {} {}", item.display(), target.display());
         match self {
-            Self::Default => {
+            Self::Default(color) => {
+                if let Some(color) = color {
+                    color.print_link_text(item, target);
+                }
+
                 os::unix::fs::symlink(item, target).with_context(|_| SymLinkSnafu {
                     target: item.display().to_string(),
                     destination: target.display().to_string(),
@@ -589,9 +598,13 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     #[cfg(target_os = "windows")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
+        info!("Linking {} {}", item.display(), target.display());
         match self {
-            Self::Default => {
-                info!("Linking {} {}", item.display(), target.display());
+            Self::Default(color) => {
+                if let Some(color) = color {
+                    color.print_link_text(item, target);
+                }
+
                 if self.is_directory(item) {
                     os::windows::fs::symlink_dir(item, target).with_context(|_| SymLinkSnafu {
                         target: item.display().to_string(),
@@ -617,9 +630,13 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
             return Ok(());
         }
 
+        info!("Deleting symlink: {}", entry_path.display());
         match self {
-            Self::Default => {
-                info!("Deleting symlink: {}", entry_path.display());
+            Self::Default(color) => {
+                if let Some(color) = color {
+                    color.print_unlink_text(entry_path);
+                }
+
                 fs::remove_file(entry_path).with_context(|_| FileRemoveSnafu {
                     file: entry_path.display().to_string(),
                 })?;
@@ -637,9 +654,13 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
             return Ok(());
         }
 
+        info!("Deleting symlink: {}", entry_path.display());
         match self {
-            Self::Default => {
-                info!("Deleting symlink: {}", entry_path.display());
+            Self::Default(color) => {
+                if let Some(color) = color {
+                    color.print_unlink_text(entry_path);
+                }
+
                 if self.is_directory(entry_path) {
                     fs::remove_dir(entry_path).with_context(|_| DirectoryRemoveSnafu {
                         directory: entry_path.display().to_string(),
@@ -658,7 +679,11 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     fn remove_item(&mut self, target: &Path) -> Result<(), CommandError> {
         match self {
-            Self::Default => {
+            Self::Default(color) => {
+                if let Some(color) = color {
+                    color.print_remove_text(target);
+                }
+
                 if self.is_directory(target) {
                     info!("Deleting directory: {}", target.display());
                     fs::remove_dir(target).with_context(|_| DirectoryRemoveSnafu {
@@ -678,9 +703,13 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     }
 
     fn create_directory(&mut self, target: &Path) -> Result<(), CommandError> {
+        info!("Creating directory: {}", target.display());
         match self {
-            Self::Default => {
-                info!("Creating directory: {}", target.display());
+            Self::Default(color) => {
+                if let Some(color) = color {
+                    color.print_create_text(target);
+                }
+
                 fs::create_dir_all(target).with_context(|_| CreateDirectorySnafu {
                     directory: target.display().to_string(),
                 })?;
@@ -693,7 +722,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     fn is_directory(&self, target: &Path) -> bool {
         match self {
-            Self::Default => fs::metadata(target).is_ok_and(|meta| meta.is_dir()),
+            Self::Default(_) => fs::metadata(target).is_ok_and(|meta| meta.is_dir()),
             Self::Simulated(data) => data.is_directory(target),
         }
     }
@@ -704,7 +733,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     fn is_symlink(&self, target: &Path) -> bool {
         match self {
-            Self::Default => fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink()),
+            Self::Default(_) => fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink()),
             Self::Simulated(data) => data.is_symlink(target),
         }
     }
@@ -717,7 +746,7 @@ impl CommandOperation<DirectoryReader> for CommandOperationImpl {
 
     fn exists(&self, target: &Path) -> bool {
         match self {
-            Self::Default => fs::exists(target).unwrap_or(false),
+            Self::Default(_) => fs::exists(target).unwrap_or(false),
             Self::Simulated(data) => data.exists(target),
         }
     }

@@ -18,29 +18,19 @@
 
 use crate::commands::ColorSupport;
 use crate::config::config_error::FileReadSnafu;
-use crate::config::logging_config::LoggingFormat;
-use crate::config::logging_error::LoggingSnafu;
+use crate::config::logging_config::{ConsoleLoggingStream, LoggingFormat};
 use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel, RegexStrategy};
 use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
-use std::io::stderr;
-use std::ops::BitOr;
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::fs;
+use std::path::Path;
 use supports_color::Stream;
-use tracing::subscriber;
-use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
-use tracing_appender::rolling::RollingFileAppender;
-use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt::format::{FmtSpan, Format};
-use tracing_subscriber::fmt::{FormatFields, SubscriberBuilder};
+use tracing_appender::non_blocking::WorkerGuard;
 
 pub const GLOBAL_CONFIG_FILE: &str = "config.toml";
 
 pub const DEFAULT_CONFIG_FILE: &str = ".graft.toml";
-
-const DEFAULT_LOG_FILE: &str = "graft.log";
 
 const DEFAULT_IGNORE: &[&str] = &[
     "RCS",
@@ -142,6 +132,7 @@ impl AppConfiguration {
     ///
     /// * `override_level`: The level to override the configuration level with
     /// * `override_format`: The format to override the configuration format with
+    /// * `override_stream`: The stream to override the configuration stream with
     ///
     /// returns: `Result<Option<WorkerGuard>`, `LoggingError`>
     /// The guard for the log file, if any, is returned
@@ -160,7 +151,7 @@ impl AppConfiguration {
     ///     use std::env;
     ///
     ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
-    ///     configuration.setup_logger(None, None)?;
+    ///     configuration.setup_logger(None, None, None)?;
     ///     Ok(())
     /// }
     /// ```
@@ -168,23 +159,11 @@ impl AppConfiguration {
         &self,
         override_level: Option<LoggingLevel>,
         override_format: Option<LoggingFormat>,
+        override_stream: Option<ConsoleLoggingStream>,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
-        let config_level = override_level.unwrap_or(self.config.logging.level);
-        let config_format = override_format.unwrap_or(self.config.logging.format);
-        if config_level == LoggingLevel::Off {
-            return Ok(None);
-        }
-
         self.config
             .logging
-            .file
-            .as_ref()
-            .and_then(|d| self.get_rolling_appender(d))
-            .map(tracing_appender::non_blocking)
-            .map_or_else(
-                || self.set_console_logger(config_level.into(), config_format),
-                |(appender, guard)| Self::set_file_logger(config_level.into(), config_format, appender, guard),
-            )
+            .setup_logger(override_level, override_format, override_stream)
     }
 
     #[must_use]
@@ -206,70 +185,9 @@ impl AppConfiguration {
         self.config.stow.regex_strategy
     }
 
-    fn set_file_logger(
-        config_level: LevelFilter,
-        logging_format: LoggingFormat,
-        appender: NonBlocking,
-        guard: WorkerGuard,
-    ) -> Result<Option<WorkerGuard>, LoggingError> {
-        match logging_format {
-            LoggingFormat::Compact => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), config_level)
-                    .with_ansi(false)
-                    .with_writer(appender)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Pretty => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), config_level)
-                    .with_ansi(false)
-                    .with_writer(appender)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Json => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), config_level)
-                    .with_ansi(false)
-                    .with_writer(appender)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-        }
-
-        Ok(Some(guard))
-    }
-
-    fn set_console_logger(
-        &self,
-        config_level: LevelFilter,
-        logging_format: LoggingFormat,
-    ) -> Result<Option<WorkerGuard>, LoggingError> {
-        let color_support = self.config.logging.color_support && supports_color::on(Stream::Stderr).is_some();
-        match logging_format {
-            LoggingFormat::Compact => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), config_level)
-                    .with_ansi(color_support)
-                    .with_writer(stderr)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Pretty => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), config_level)
-                    .with_ansi(color_support)
-                    .with_writer(stderr)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-            LoggingFormat::Json => {
-                let subscriber = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), config_level)
-                    .with_ansi(color_support)
-                    .with_writer(stderr)
-                    .finish();
-                subscriber::set_global_default(subscriber).context(LoggingSnafu)?;
-            }
-        }
-
-        Ok(None)
+    #[must_use]
+    pub const fn printing(&self) -> bool {
+        self.config.stow.printing_enable
     }
 
     fn build_file_pattern(path: Option<&Path>) -> Option<String> {
@@ -339,84 +257,5 @@ impl AppConfiguration {
         }
 
         line.trim()
-    }
-
-    fn get_log_path(root: &Path, dir: &Path) -> PathBuf {
-        if dir.is_absolute() {
-            dir.to_owned()
-        } else {
-            root.join(dir)
-        }
-    }
-
-    fn create_directory_if_necessary(dir: &Path) -> Result<(), std::io::Error> {
-        if !dir.exists() {
-            fs::create_dir_all(dir)?;
-        }
-
-        Ok(())
-    }
-
-    fn get_rolling_appender(&self, path: &Path) -> Option<RollingFileAppender> {
-        self.config
-            .logging
-            .logging_path
-            .as_ref()
-            .and_then(Self::get_file_path)
-            .and_then(|dir| Self::try_make_log_path(path, &dir))
-            .map_or_else(|| None, |root| self.setup_rolling_appender(path, root))
-    }
-
-    fn setup_rolling_appender(&self, path: &Path, root: String) -> Option<RollingFileAppender> {
-        let file_name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(DEFAULT_LOG_FILE)
-            .to_string();
-        self.map_file_appender(file_name, root)
-    }
-
-    fn try_make_log_path(path: &Path, dir: &Path) -> Option<String> {
-        path.parent()
-            .map(|d| Self::get_log_path(dir, d))
-            .and_then(|d| Self::create_directory_if_necessary(&d).ok().map(|()| d))
-            .and_then(|n| n.to_str().map(ToString::to_string))
-            .or_else(|| dir.to_str().map(ToString::to_string))
-    }
-
-    fn get_file_path(p: &PathBuf) -> Option<PathBuf> {
-        if p.is_absolute() {
-            Some(p.to_owned())
-        } else {
-            env::current_dir().map_or(None, |c| Some(c.join(p)))
-        }
-    }
-
-    fn map_file_appender(&self, file_name: String, root: String) -> Option<RollingFileAppender> {
-        RollingFileAppender::builder()
-            .rotation(self.config.logging.rotation.into())
-            .max_log_files(self.config.logging.max_log_files)
-            .filename_prefix(file_name)
-            .build(root)
-            .ok()
-    }
-
-    fn setup_subscriber_builder<TFields, TFormat>(
-        subscriber_builder: SubscriberBuilder<TFields, Format<TFormat>>,
-        log_level: LevelFilter,
-    ) -> SubscriberBuilder<TFields, Format<TFormat>>
-    where
-        TFields: for<'writer> FormatFields<'writer> + 'static,
-    {
-        subscriber_builder
-            .with_level(true)
-            .with_max_level(log_level)
-            .with_file(true)
-            .log_internal_errors(true)
-            .with_span_events(FmtSpan::ENTER.bitor(FmtSpan::CLOSE).bitor(FmtSpan::EXIT))
-            .with_line_number(false)
-            .with_thread_ids(true)
-            .with_thread_names(true)
-            .with_target(true)
     }
 }
