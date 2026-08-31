@@ -185,6 +185,11 @@ impl AppConfiguration {
         self.config.stow.regex_strategy
     }
 
+    #[must_use]
+    pub const fn printing(&self) -> bool {
+        self.config.stow.printing_enable
+    }
+
     fn build_file_pattern(path: Option<&Path>) -> Option<String> {
         path.and_then(|p| p.file_name())
             .and_then(|p| p.to_str())

@@ -122,11 +122,11 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
 
     /// Switches the builder to normal command execution mode.
     #[must_use]
-    pub fn command(self) -> CommandBuilder<CommandOperationImpl> {
+    pub fn command(self, color: Option<ColorSupport>) -> CommandBuilder<CommandOperationImpl> {
         CommandBuilder::<CommandOperationImpl> {
             target: self.target,
             packages: self.packages,
-            operation: CommandOperationImpl::Default,
+            operation: CommandOperationImpl::Default(color.map(Box::new)),
             dot_file_prefix: self.dot_file_prefix,
         }
     }
@@ -200,9 +200,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
 
     /// Switches the unstow command into normal execution mode.
     #[must_use]
-    pub fn command(self) -> UnstowCommandBuilder<CommandOperationImpl> {
+    pub fn command(self, color: Option<ColorSupport>) -> UnstowCommandBuilder<CommandOperationImpl> {
         UnstowCommandBuilder::<CommandOperationImpl> {
-            builder: self.builder.command(),
+            builder: self.builder.command(color),
         }
     }
 
@@ -356,9 +356,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
 
     /// Switches the stow command into normal execution mode.
     #[must_use]
-    pub fn command(self) -> StowCommandBuilder<CommandOperationImpl> {
+    pub fn command(self, color: Option<ColorSupport>) -> StowCommandBuilder<CommandOperationImpl> {
         StowCommandBuilder::<CommandOperationImpl> {
-            builder: self.builder.command(),
+            builder: self.builder.command(color),
             ignored: self.ignored,
             overrides: self.overrides,
             no_folding: self.no_folding,
@@ -496,9 +496,9 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
 
     /// Switches the restow command into normal execution mode.
     #[must_use]
-    pub fn command(self) -> RestowCommandBuilder<CommandOperationImpl> {
+    pub fn command(self, color: Option<ColorSupport>) -> RestowCommandBuilder<CommandOperationImpl> {
         RestowCommandBuilder::<CommandOperationImpl> {
-            stow_command: self.stow_command.command(),
+            stow_command: self.stow_command.command(color),
         }
     }
 
@@ -620,9 +620,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
 
     /// Switches the list command into normal execution mode.
     #[must_use]
-    pub fn command(self) -> UnstowCommandBuilder<CommandOperationImpl> {
-        UnstowCommandBuilder::<CommandOperationImpl> {
-            builder: self.builder.command(),
+    pub fn command(self, color: Option<ColorSupport>) -> ListCommandBuilder<CommandOperationImpl> {
+        ListCommandBuilder::<CommandOperationImpl> {
+            builder: self.builder.command(color),
+            color_support: self.color_support,
         }
     }
 

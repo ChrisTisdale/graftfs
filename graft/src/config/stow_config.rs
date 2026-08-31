@@ -201,6 +201,8 @@ pub struct StowConfig {
     pub linking_strategy: LinkingStrategy,
     #[serde(default)]
     pub regex_strategy: RegexStrategy,
+    #[serde(default)]
+    pub printing_enable: bool,
 }
 
 #[cfg(test)]

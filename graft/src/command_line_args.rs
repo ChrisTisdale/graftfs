@@ -23,7 +23,7 @@ use crate::cli_errors::{
     GenerateCompletionsSnafu, InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, OutputFileCreationSnafu,
     ResolveSnafu,
 };
-use crate::commands::{CommandBuilder, CommandOperationImpl};
+use crate::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
 use crate::config::{
     AppConfiguration, Config, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel,
     RegexStrategy, path_resolver,
@@ -187,6 +187,12 @@ struct StowArgs {
         value_name = "STRATEGY"
     )]
     regex_strategy: Option<RegexStrategy>,
+    #[arg(
+        long = "print",
+        help = "Enable printing_enable operations performed by the application.  This is only applicable when the operation is not a dry run.",
+        conflicts_with = "simulate"
+    )]
+    printing: Option<bool>,
 }
 
 #[derive(Args, Default, Clone, PartialEq, Eq)]
@@ -205,6 +211,12 @@ struct UnstowArgs {
         help = "Perform a dry run of the operation. This will display the actions that would be taken without making any actual changes to the filesystem."
     )]
     simulate: bool,
+    #[arg(
+        long = "print",
+        help = "Enable printing_enable operations performed by the application.  This is only applicable when the operation is not a dry run.",
+        conflicts_with = "simulate"
+    )]
+    printing: Option<bool>,
 }
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
@@ -546,11 +558,23 @@ impl CommandLineProcessor {
         Ok(app_config)
     }
 
-    fn create_command(simulated: bool, app_config: &AppConfiguration) -> CommandBuilder<CommandOperationImpl> {
+    fn create_command(
+        simulated: bool,
+        printing: bool,
+        app_config: &AppConfiguration,
+    ) -> CommandBuilder<CommandOperationImpl> {
         if simulated {
             CommandBuilder::<CommandOperationImpl>::new().simulate(app_config.color_support())
         } else {
-            CommandBuilder::new()
+            CommandBuilder::<CommandOperationImpl>::new().command(Self::get_color_support(printing, app_config))
+        }
+    }
+
+    fn get_color_support(printing: bool, app_config: &AppConfiguration) -> Option<ColorSupport> {
+        if printing {
+            Some(app_config.color_support())
+        } else {
+            None
         }
     }
 
@@ -640,8 +664,9 @@ impl CommandLineProcessor {
             .regex_strategy
             .unwrap_or_else(|| app_config.regex_strategy());
 
+        let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
-        let command = Self::create_command(stow_args.simulate, &app_config)
+        let command = Self::create_command(stow_args.simulate, printing, &app_config)
             .stow()
             .with_dot_file_prefix(stow_args.directory.dotfiles)
             .with_ignored(app_config.ignored)
@@ -675,8 +700,11 @@ impl CommandLineProcessor {
             )
             .context(LoggingSnafu)?;
 
+        let printing = unstow_args
+            .printing
+            .unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &unstow_args.directory.packages)?;
-        let command = Self::create_command(unstow_args.simulate, &app_config)
+        let command = Self::create_command(unstow_args.simulate, printing, &app_config)
             .unstow()
             .with_dot_file_prefix(unstow_args.directory.dotfiles)
             .with_target(target)
@@ -713,8 +741,9 @@ impl CommandLineProcessor {
             .regex_strategy
             .unwrap_or_else(|| app_config.regex_strategy());
 
+        let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
-        let command = Self::create_command(stow_args.simulate, &app_config)
+        let command = Self::create_command(stow_args.simulate, printing, &app_config)
             .restow()
             .with_dot_file_prefix(stow_args.directory.dotfiles)
             .with_ignored(app_config.ignored)
