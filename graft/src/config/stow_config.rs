@@ -202,7 +202,7 @@ pub struct StowConfig {
     #[serde(default)]
     pub regex_strategy: RegexStrategy,
     #[serde(default)]
-    pub printing_enable: bool,
+    pub printing_enabled: bool,
 }
 
 #[cfg(test)]

@@ -187,7 +187,7 @@ impl AppConfiguration {
 
     #[must_use]
     pub const fn printing(&self) -> bool {
-        self.config.stow.printing_enable
+        self.config.stow.printing_enabled
     }
 
     fn build_file_pattern(path: Option<&Path>) -> Option<String> {

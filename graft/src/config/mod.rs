@@ -301,7 +301,7 @@ mod test {
         [stow]
         linking_strategy = "short"
         regex_strategy = "rust"
-        printing_enable = false
+        printing_enabled = false
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
@@ -352,7 +352,7 @@ mod test {
         let expected_stow = StowConfig {
             linking_strategy: LinkingStrategy::Short,
             regex_strategy: RegexStrategy::Rust,
-            printing_enable: false,
+            printing_enabled: false,
         };
 
         assert_eq!(config.stow, expected_stow);
