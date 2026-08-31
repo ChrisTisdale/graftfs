@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.5.0 (2026-08-31)
+
+### Bug Fixes
+
+ - <csr-id-da8e877fa854a70ea6f9334ce085e3d85fe7a08f/> Fixing duplicate packages
+   Addressing issues where duplicate packages could be provided.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release over the course of 2 calendar days.
+ - 3 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#33](https://github.com/ChrisTisdale/graftfs/issues/33)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#33](https://github.com/ChrisTisdale/graftfs/issues/33)**
+    - Logging Stream Selection Support ([`cbbd567`](https://github.com/ChrisTisdale/graftfs/commit/cbbd567a4d546b96989dab7175caeb6ebfcbc7e6))
+ * **Uncategorized**
+    - Fixing duplicate packages ([`da8e877`](https://github.com/ChrisTisdale/graftfs/commit/da8e877fa854a70ea6f9334ce085e3d85fe7a08f))
+</details>
+
 ## v1.4.0 (2026-08-28)
 
 ### Chore
@@ -23,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 15 calendar days.
+ - 4 commits contributed to the release over the course of 15 calendar days.
  - 19 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#30](https://github.com/ChrisTisdale/graftfs/issues/30)
@@ -37,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#30](https://github.com/ChrisTisdale/graftfs/issues/30)**
     - Adding regex options ([`29bf89f`](https://github.com/ChrisTisdale/graftfs/commit/29bf89f1fb473cba8b917b74bf9ef13589756623))
  * **Uncategorized**
+    - Release graftfs v1.4.0 ([`7eb5034`](https://github.com/ChrisTisdale/graftfs/commit/7eb503487649debb0f82c2f73843d35cf7d6a44f))
     - Updating dependencies ([`d0cf58e`](https://github.com/ChrisTisdale/graftfs/commit/d0cf58ecec5cca14d80663e288c78e4dfea27906))
     - Updating dependencies ([`ef14cc4`](https://github.com/ChrisTisdale/graftfs/commit/ef14cc46758536fe18654bf25e4a65ef26843ac3))
 </details>
