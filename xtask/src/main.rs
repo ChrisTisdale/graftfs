@@ -19,6 +19,7 @@
 use clap::builder::Styles;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use graft::CommandLineProcessor;
+use std::fmt::Display;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -36,11 +37,29 @@ const HELP_TEMPLATE: &str = r"
 {all-args}{after-help}
 ";
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
 enum Configuration {
     #[default]
     Release,
     Debug,
+}
+
+impl Configuration {
+    const fn as_arg(self) -> Option<&'static str> {
+        match self {
+            Self::Release => Some("--release"),
+            Self::Debug => None,
+        }
+    }
+}
+
+impl Display for Configuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Release => write!(f, "release"),
+            Self::Debug => write!(f, "debug"),
+        }
+    }
 }
 
 #[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
@@ -58,6 +77,12 @@ struct DistributeArgs {
         conflicts_with = "features"
     )]
     all_features: bool,
+    #[arg(
+        short = 'n',
+        long = "no-default-features",
+        help = "Disable default features when building the graft application"
+    )]
+    no_default_features: bool,
     #[arg(
         short = 'c',
         long = "configuration",
@@ -122,29 +147,35 @@ fn process_dist(args: DistributeArgs) -> Result<(), anyhow::Error> {
     let mut additional_args = if args.all_features {
         vec![ALL_FEATURES.to_string()]
     } else {
-        args.features
-            .into_iter()
-            .flat_map(|feature| ["--features".to_string(), feature])
-            .collect()
+        into_feature_args(args.features)
     };
 
-    let configuration = match args.configuration {
-        Configuration::Release => "--release",
-        Configuration::Debug => "--debug",
-    };
+    if args.no_default_features {
+        additional_args.push("--no-default-features".to_string());
+    }
 
-    additional_args.push(configuration.to_string());
-    dist(additional_args, &output)
+    let configuration = args.configuration.as_arg();
+    if let Some(configuration) = configuration {
+        additional_args.push(configuration.to_string());
+    }
+
+    dist(additional_args, args.configuration, &output)
 }
 
-fn dist(additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Error> {
+fn into_feature_args(args: Vec<String>) -> Vec<String> {
+    args.into_iter()
+        .flat_map(|feature| ["--features".to_string(), feature])
+        .collect()
+}
+
+fn dist(additional_args: Vec<String>, configuration: Configuration, out_dir: &Path) -> Result<(), anyhow::Error> {
     let _ = fs::remove_dir_all(out_dir);
     fs::create_dir_all(out_dir)?;
 
     let with_nushell = additional_args
         .iter()
-        .any(|a| a.eq(" nushell") || a.eq(ALL_FEATURES));
-    dist_binary(additional_args, out_dir)?;
+        .any(|a| a.eq("nushell") || a.eq(ALL_FEATURES));
+    dist_binary(additional_args, configuration, out_dir)?;
     dist_manpage(out_dir, with_nushell)?;
     Ok(())
 }
@@ -171,14 +202,14 @@ enum ShelWithNusehll {
 }
 
 fn dist_manpage(out_dir: &Path, with_nushell: bool) -> Result<(), anyhow::Error> {
-    let cmd = CommandLineProcessor::command();
-    for cmd in cmd.get_subcommands() {
+    let root_cmd = CommandLineProcessor::command();
+    for cmd in root_cmd.get_subcommands() {
         render_subcommand(cmd, out_dir, with_nushell)?;
     }
 
-    let man = clap_mangen::Man::new(cmd);
+    let man = clap_mangen::Man::new(root_cmd);
 
-    let mut buffer: Vec<u8> = Vec::default();
+    let mut buffer: Vec<u8> = Vec::new();
     man.render(&mut buffer)?;
 
     fs::write(out_dir.join("graft.1"), buffer)?;
@@ -187,28 +218,9 @@ fn dist_manpage(out_dir: &Path, with_nushell: bool) -> Result<(), anyhow::Error>
 }
 
 fn render_subcommand(cmd: &clap::Command, out_dir: &Path, with_nushell: bool) -> Result<(), anyhow::Error> {
-    let name = cmd.get_name().to_string();
-    let mut cmd = cmd.clone();
-    if name.eq_ignore_ascii_case("completions") {
-        let args = cmd.get_arguments().cloned().collect::<Vec<_>>();
-        let mut temp = clap::Command::new("completions");
-        for mut arg in args {
-            if arg.get_id().as_str().eq_ignore_ascii_case("shell") {
-                if with_nushell {
-                    arg = arg.value_parser(clap::value_parser!(ShelWithNusehll));
-                } else {
-                    arg = arg.value_parser(clap::value_parser!(Shell));
-                }
-            }
-
-            temp = temp.arg(arg);
-        }
-
-        cmd = temp;
-    }
-
+    let name = cmd.get_name();
+    let cmd = create_subcommand(cmd, with_nushell, name);
     let man = clap_mangen::Man::new(cmd);
-
     let mut buffer: Vec<u8> = Vec::default();
     man.render(&mut buffer)?;
 
@@ -216,7 +228,35 @@ fn render_subcommand(cmd: &clap::Command, out_dir: &Path, with_nushell: bool) ->
     Ok(())
 }
 
-fn dist_binary(mut additional_args: Vec<String>, out_dir: &Path) -> Result<(), anyhow::Error> {
+fn create_subcommand(cmd: &clap::Command, with_nushell: bool, name: &str) -> clap::Command {
+    const SHELL_ARG_ID: &str = "shell";
+    const COMPLETIONS_COMMAND_NAME: &str = "completions";
+
+    if name.eq_ignore_ascii_case(COMPLETIONS_COMMAND_NAME) {
+        let shell_arg = if with_nushell {
+            clap::Arg::new(SHELL_ARG_ID).value_parser(clap::value_parser!(ShelWithNusehll))
+        } else {
+            clap::Arg::new(SHELL_ARG_ID).value_parser(clap::value_parser!(Shell))
+        };
+
+        let other_args = cmd
+            .get_arguments()
+            .filter(|a| !a.get_id().eq(SHELL_ARG_ID))
+            .cloned();
+
+        clap::Command::new(COMPLETIONS_COMMAND_NAME)
+            .args(other_args)
+            .arg(shell_arg)
+    } else {
+        cmd.clone()
+    }
+}
+
+fn dist_binary(
+    mut additional_args: Vec<String>,
+    configuration: Configuration,
+    out_dir: &Path,
+) -> Result<(), anyhow::Error> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let root = project_root()?;
 
@@ -228,7 +268,7 @@ fn dist_binary(mut additional_args: Vec<String>, out_dir: &Path) -> Result<(), a
         return Err(anyhow::Error::msg("cargo build failed"));
     }
 
-    let source = root.join("target/release/graft");
+    let source = root.join(format!("target/{configuration}/graft"));
     let destination = out_dir.join("graft");
     fs::copy(&source, &destination)?;
     Ok(())
