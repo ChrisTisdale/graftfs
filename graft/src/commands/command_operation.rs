@@ -31,8 +31,8 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     /// Creates a symbolic link from the `source` path to the `target` path.
     ///
     /// # Parameters
-    /// - `target`: A reference to the path where the symbolic link will be created.
     /// - `source`: A reference to the path that the symbolic link will point to.
+    /// - `target`: A reference to the path where the symbolic link will be created.
     ///
     /// # Returns
     /// - `Ok(())`: If the symbolic link is successfully created.
@@ -55,8 +55,8 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     ///
     /// let mut instance = CommandOperationImpl::default();
     /// let result = instance.link_item(
-    ///     Path::new("/path/to/target"),
-    ///     Path::new("/path/to/source")
+    ///     Path::new("/path/to/source"),
+    ///     Path::new("/path/to/target")
     /// );
     ///
     /// match result {
@@ -64,7 +64,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     ///     Err(e) => eprintln!("Failed to create symbolic link: {:?}", e),
     /// }
     /// ```
-    fn link_item(&mut self, target: &Path, source: &Path) -> Result<(), CommandError>;
+    fn link_item(&mut self, source: &Path, target: &Path) -> Result<(), CommandError>;
 
     /// Removes a symbolic link or junction point at the specified target path.
     ///

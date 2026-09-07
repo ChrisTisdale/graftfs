@@ -109,6 +109,10 @@ impl AppConfiguration {
             config.ignored.file = search_path.join(config.ignored.file);
         }
 
+        if config.overrides.file.is_relative() {
+            config.overrides.file = search_path.join(config.overrides.file);
+        }
+
         if let Some(logging_path) = &config.logging.logging_path
             && logging_path.is_relative()
         {
@@ -206,8 +210,8 @@ impl AppConfiguration {
             files.insert(file_string);
         }
 
+        files.extend(DEFAULT_IGNORE.iter().map(ToString::to_string));
         if !fs::exists(config.ignored.file.as_path()).unwrap_or(false) {
-            files.extend(DEFAULT_IGNORE.iter().map(ToString::to_string));
             return Ok(files);
         }
 
