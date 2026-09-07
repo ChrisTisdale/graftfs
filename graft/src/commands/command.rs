@@ -16,14 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::commands::command_error::{ChangeDirectorySnafu, InvalidPathSnafu};
+use crate::commands::command_error::InvalidPathSnafu;
 use crate::commands::stow_data::StowFilter;
 use crate::commands::{CommandError, CommandOperation, ListData, RestowData, StowData, UnstowData};
 use crate::config::LinkingStrategy;
 use crate::config::path_resolver::path_relative_from;
 use grep::matcher::Matcher;
 use snafu::ResultExt;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -133,7 +132,6 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 struct StowPackage<'a, TData> {
     directory: &'a Path,
     data: &'a TData,
-    stow_root: &'a Path,
 }
 
 impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>>
@@ -192,16 +190,10 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
             });
         }
 
-        debug!("Changing directory to {}", args.target.display());
-        env::set_current_dir(&args.target).with_context(|_| ChangeDirectorySnafu {
-            directory: args.target.display().to_string(),
-        })?;
-
         for package in &args.packages {
             let stow_package = StowPackage {
                 directory: package,
                 data: args,
-                stow_root: &args.target,
             };
 
             Self::process_stow_package(&stow_package, operation)?;
@@ -379,8 +371,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
         match package.data.options.linking_strategy {
             LinkingStrategy::Short => {
                 let source = path_relative_from(item, target).unwrap_or_else(|| item.to_path_buf());
-                let target = path_relative_from(&full_path, package.stow_root).unwrap_or(full_path);
-                operation.link_item(&source, &target)?;
+                operation.link_item(&source, &full_path)?;
             }
             LinkingStrategy::Full => operation.link_item(item, &full_path)?,
         }
@@ -638,7 +629,7 @@ mod tests {
             let guard = TEST_SYNC.lock()?;
 
             Ok(Self {
-                setup_path,
+                setup_path: setup_path.canonicalize()?,
                 directory,
                 _guard: guard,
             })
