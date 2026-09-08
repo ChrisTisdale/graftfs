@@ -311,7 +311,6 @@ mod test {
         arrow = "cyan"
         source = "black"
         target = "grey"
-        warning = "white"
 
         [stow]
         linking_strategy = "short"
