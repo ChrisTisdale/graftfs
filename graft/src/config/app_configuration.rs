@@ -19,7 +19,9 @@
 use crate::commands::ColorSupport;
 use crate::config::config_error::FileReadSnafu;
 use crate::config::logging_config::{ConsoleLoggingStream, LoggingFormat};
-use crate::config::{Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel, RegexStrategy};
+use crate::config::{
+    Config, ConfigError, LinkingStrategy, LoggingError, LoggingLevel, MatchingStrategy, RegexStrategy,
+};
 use snafu::ResultExt;
 use std::collections::HashSet;
 use std::fmt::Display;
@@ -173,7 +175,7 @@ impl AppConfiguration {
     #[must_use]
     pub fn color_support(&self) -> ColorSupport {
         if self.config.color.enabled && supports_color::on(Stream::Stdout).is_some() {
-            ColorSupport::Colored(self.config.color.settings.clone())
+            ColorSupport::Colored(self.config.color.color_settings())
         } else {
             ColorSupport::None
         }
@@ -187,6 +189,11 @@ impl AppConfiguration {
     #[must_use]
     pub const fn regex_strategy(&self) -> RegexStrategy {
         self.config.stow.regex_strategy
+    }
+
+    #[must_use]
+    pub const fn matching_strategy(&self) -> MatchingStrategy {
+        self.config.stow.matching_strategy
     }
 
     #[must_use]

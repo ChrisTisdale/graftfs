@@ -18,11 +18,12 @@
 
 use crate::commands::command::CommandData;
 use crate::commands::command_operation::SimulatedData;
+use crate::commands::stow_data::StowStrategies;
 use crate::commands::{
     ColorSupport, Command, CommandBuildError, CommandOperation, CommandOperationImpl, DirectoryReader, ListData,
     RestowData, StowData, StowOptions, UnstowData,
 };
-use crate::config::{LinkingStrategy, RegexStrategy};
+use crate::config::{LinkingStrategy, MatchingStrategy, RegexStrategy};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -47,8 +48,7 @@ pub struct StowCommandBuilder<T: CommandOperation<DirectoryReader>> {
     builder: CommandBuilder<T>,
     ignored: HashSet<String>,
     overrides: HashSet<String>,
-    linking_strategy: LinkingStrategy,
-    regex_strategy: RegexStrategy,
+    stow_strategy: StowStrategies,
     no_folding: bool,
 }
 
@@ -138,8 +138,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
             builder: self,
             ignored: HashSet::new(),
             overrides: HashSet::new(),
-            linking_strategy: LinkingStrategy::default(),
-            regex_strategy: RegexStrategy::default(),
+            stow_strategy: StowStrategies::default(),
             no_folding: false,
         }
     }
@@ -330,14 +329,21 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
     /// Sets the linking strategy for the stow command.
     #[must_use]
     pub const fn with_linking_strategy(mut self, strategy: LinkingStrategy) -> Self {
-        self.linking_strategy = strategy;
+        self.stow_strategy.linking = strategy;
         self
     }
 
     /// Sets the regex strategy for the stow command.
     #[must_use]
     pub const fn with_regex_strategy(mut self, strategy: RegexStrategy) -> Self {
-        self.regex_strategy = strategy;
+        self.stow_strategy.regex = strategy;
+        self
+    }
+
+    // Sets the matching strategy for the stow command.
+    #[must_use]
+    pub const fn with_matching_strategy(mut self, strategy: MatchingStrategy) -> Self {
+        self.stow_strategy.matching = strategy;
         self
     }
 
@@ -349,8 +355,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             ignored: self.ignored,
             overrides: HashSet::new(),
             no_folding: self.no_folding,
-            linking_strategy: self.linking_strategy,
-            regex_strategy: self.regex_strategy,
+            stow_strategy: self.stow_strategy,
         }
     }
 
@@ -362,8 +367,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             ignored: self.ignored,
             overrides: self.overrides,
             no_folding: self.no_folding,
-            regex_strategy: self.regex_strategy,
-            linking_strategy: self.linking_strategy,
+            stow_strategy: self.stow_strategy,
         }
     }
 
@@ -411,10 +415,10 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
             .builder
             .packages
             .map_or_else(|| Err(CommandBuildError::MissingStowDirectory), Ok)?;
+
         let stow_options = StowOptions::new(
             self.builder.dot_file_prefix,
-            self.linking_strategy,
-            self.regex_strategy,
+            &self.stow_strategy,
             self.no_folding,
             self.ignored.iter(),
             self.overrides.iter(),
@@ -523,6 +527,13 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
         self
     }
 
+    // Sets the matching strategy for the restow command.
+    #[must_use]
+    pub fn with_matching_strategy(mut self, strategy: MatchingStrategy) -> Self {
+        self.stow_command = self.stow_command.with_matching_strategy(strategy);
+        self
+    }
+
     /// Builds a `Command<T>` object from the current state of the builder.
     /// This method validates the builder's configuration and constructs a `Command`
     /// if all required fields are properly initialized. If any required fields are
@@ -571,8 +582,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
 
         let stow_options = StowOptions::new(
             cmd.builder.dot_file_prefix,
-            cmd.linking_strategy,
-            cmd.regex_strategy,
+            &cmd.stow_strategy,
             cmd.no_folding,
             cmd.ignored.iter(),
             cmd.overrides.iter(),

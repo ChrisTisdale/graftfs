@@ -26,7 +26,7 @@ use crate::cli_errors::{
 use crate::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
 use crate::config::{
     AppConfiguration, Config, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel,
-    RegexStrategy, path_resolver,
+    MatchingStrategy, RegexStrategy, path_resolver,
 };
 use crate::shell::Shell;
 use clap::builder::Styles;
@@ -187,6 +187,14 @@ struct StowArgs {
         value_name = "STRATEGY"
     )]
     regex_strategy: Option<RegexStrategy>,
+    #[arg(
+        short = 'm',
+        long = "matching-strategy",
+        ignore_case = true,
+        help = "Specify the matching strategy for stowing files.",
+        value_name = "STRATEGY"
+    )]
+    matching_strategy: Option<MatchingStrategy>,
     #[arg(
         long = "print",
         help = "Enable printing_enable operations performed by the application.  This is only applicable when the operation is not a dry run.",
@@ -664,6 +672,10 @@ impl CommandLineProcessor {
             .regex_strategy
             .unwrap_or_else(|| app_config.regex_strategy());
 
+        let matching_strategy = stow_args
+            .matching_strategy
+            .unwrap_or_else(|| app_config.matching_strategy());
+
         let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, printing, &app_config)
@@ -676,6 +688,7 @@ impl CommandLineProcessor {
             .with_packages(packages)
             .with_linking_strategy(linking_strategy)
             .with_regex_strategy(regex_strategy)
+            .with_matching_strategy(matching_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Stow" })?;
 
@@ -741,6 +754,10 @@ impl CommandLineProcessor {
             .regex_strategy
             .unwrap_or_else(|| app_config.regex_strategy());
 
+        let matching_strategy = stow_args
+            .matching_strategy
+            .unwrap_or_else(|| app_config.matching_strategy());
+
         let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, printing, &app_config)
@@ -753,6 +770,7 @@ impl CommandLineProcessor {
             .with_packages(packages)
             .with_linking_strategy(linking_strategy)
             .with_regex_strategy(regex_strategy)
+            .with_matching_strategy(matching_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Restow" })?;
 
