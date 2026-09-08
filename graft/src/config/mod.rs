@@ -276,7 +276,6 @@ mod test {
         arrow: Some(Color::Cyan),
         source: Some(Color::Black),
         target: Some(Color::Grey),
-        warning: Some(Color::White),
     };
 
     #[test]
@@ -685,7 +684,6 @@ mod test {
         arrow = "cyan"
         source = "black"
         target = "white"
-        warning = "yellow"
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
@@ -698,7 +696,6 @@ mod test {
         assert_eq!(config.color.settings.arrow, Some(Color::Cyan));
         assert_eq!(config.color.settings.source, Some(Color::Black));
         assert_eq!(config.color.settings.target, Some(Color::White));
-        assert_eq!(config.color.settings.warning, Some(Color::Yellow));
     }
 
     #[test]
@@ -716,7 +713,6 @@ mod test {
         arrow = "Cyan"
         source = "Black"
         target = "Grey"
-        warning = "White"
         "#;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
@@ -743,7 +739,6 @@ mod test {
        arrow = "#F54927"
        source = "#F54927"
        target = "#F54927"
-       warning = "#F54927"
        "##;
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
@@ -790,11 +785,6 @@ mod test {
                     g: 0x49,
                     b: 0x27,
                 }),
-                warning: Some(Color::Rgb {
-                    r: 0xF5,
-                    g: 0x49,
-                    b: 0x27,
-                }),
             },
         };
 
@@ -823,7 +813,6 @@ mod test {
                 arrow: None,
                 source: None,
                 target: None,
-                warning: None,
             },
         };
 
@@ -839,7 +828,6 @@ mod test {
             arrow: default_color.arrow,
             source: default_color.source,
             target: default_color.target,
-            warning: default_color.warning,
         };
 
         assert_eq!(config.color.color_settings(), expected_color_settings);

@@ -575,15 +575,6 @@ impl Iterator for DirectoryReader {
     }
 }
 
-impl Drop for CommandOperationImpl {
-    fn drop(&mut self) {
-        match self {
-            Self::Default(_) => {}
-            Self::Simulated(color) => color.color_support.print_simulated_warning_text(),
-        }
-    }
-}
-
 impl CommandOperation<DirectoryReader> for CommandOperationImpl {
     #[cfg(unix)]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {

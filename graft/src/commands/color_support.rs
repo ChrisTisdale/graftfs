@@ -122,21 +122,6 @@ impl ColorSupport {
         );
     }
 
-    pub fn print_simulated_warning_text(&self) {
-        println!(
-            "\n{} in simulation mode so not modifying filesystem.",
-            self.format_warning_text("WARNING:")
-        );
-    }
-
-    #[must_use]
-    pub fn format_warning_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
-        match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.warning),
-        }
-    }
-
     #[must_use]
     pub fn format_arrow_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {

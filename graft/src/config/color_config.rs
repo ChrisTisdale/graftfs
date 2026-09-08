@@ -68,12 +68,6 @@ const DEFAULT_TARGET_COLOR: Color = Color::Rgb {
     b: 230,
 };
 
-const DEFAULT_WARNING_COLOR: Color = Color::Rgb {
-    r: 238,
-    g: 212,
-    b: 159,
-};
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ColorConfig {
     pub enabled: bool,
@@ -106,7 +100,6 @@ pub struct SerializeColorSettings {
     pub arrow: Option<Color>,
     pub source: Option<Color>,
     pub target: Option<Color>,
-    pub warning: Option<Color>,
 }
 
 impl From<ColorSettings> for SerializeColorSettings {
@@ -120,7 +113,6 @@ impl From<ColorSettings> for SerializeColorSettings {
             arrow: Some(value.arrow),
             source: Some(value.source),
             target: Some(value.target),
-            warning: Some(value.warning),
         }
     }
 }
@@ -136,7 +128,6 @@ impl Default for ColorSettings {
             arrow: DEFAULT_ARROW_COLOR,
             source: DEFAULT_SOURCE_COLOR,
             target: DEFAULT_TARGET_COLOR,
-            warning: DEFAULT_WARNING_COLOR,
         }
     }
 }
@@ -152,7 +143,6 @@ impl From<SerializeColorSettings> for ColorSettings {
             arrow: value.arrow.unwrap_or(DEFAULT_ARROW_COLOR),
             source: value.source.unwrap_or(DEFAULT_SOURCE_COLOR),
             target: value.target.unwrap_or(DEFAULT_TARGET_COLOR),
-            warning: value.warning.unwrap_or(DEFAULT_WARNING_COLOR),
         }
     }
 }
@@ -161,16 +151,8 @@ impl Display for SerializeColorSettings {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "ColorSettings {{ link_color: {:?}, unlink_color: {:?}, list_color: {:?}, remove_color: {:?}, create_color: {:?}, arrow_color: {:?}, source_color: {:?}, target_color: {:?}, warning_color: {:?} }}",
-            self.link,
-            self.unlink,
-            self.list,
-            self.remove,
-            self.create,
-            self.arrow,
-            self.source,
-            self.target,
-            self.warning
+            "ColorSettings {{ link_color: {:?}, unlink_color: {:?}, list_color: {:?}, remove_color: {:?}, create_color: {:?}, arrow_color: {:?}, source_color: {:?}, target_color: {:?} }}",
+            self.link, self.unlink, self.list, self.remove, self.create, self.arrow, self.source, self.target,
         )
     }
 }
@@ -185,7 +167,6 @@ pub struct ColorSettings {
     pub arrow: Color,
     pub source: Color,
     pub target: Color,
-    pub warning: Color,
 }
 
 impl Default for ColorConfig {
@@ -222,6 +203,5 @@ mod test {
         assert_eq!(settings.arrow, DEFAULT_ARROW_COLOR);
         assert_eq!(settings.source, DEFAULT_SOURCE_COLOR);
         assert_eq!(settings.target, DEFAULT_TARGET_COLOR);
-        assert_eq!(settings.warning, DEFAULT_WARNING_COLOR);
     }
 }
