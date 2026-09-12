@@ -730,46 +730,23 @@ impl Display for LoggingConfig {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
+    use rstest::rstest;
 
-    #[test]
-    fn logging_level_from_str_off() {
-        let logging_level = <LoggingLevel as FromStr>::from_str("off").unwrap();
-        assert_eq!(logging_level, LoggingLevel::Off);
+    #[rstest]
+    #[case("off", LoggingLevel::Off)]
+    #[case("trace", LoggingLevel::Trace)]
+    #[case("debug", LoggingLevel::Debug)]
+    #[case("info", LoggingLevel::Info)]
+    #[case("warn", LoggingLevel::Warn)]
+    #[case("error", LoggingLevel::Error)]
+    fn logging_level_from_str(#[case] level: &str, #[case] expected_level: LoggingLevel) {
+        let logging_level = <LoggingLevel as FromStr>::from_str(level).unwrap();
+        assert_eq!(logging_level, expected_level);
     }
 
-    #[test]
-    fn logging_level_from_str_trace() {
-        let logging_level = <LoggingLevel as FromStr>::from_str("trace").unwrap();
-        assert_eq!(logging_level, LoggingLevel::Trace);
-    }
-
-    #[test]
-    fn logging_level_from_str_debug() {
-        let logging_level = <LoggingLevel as FromStr>::from_str("debug").unwrap();
-        assert_eq!(logging_level, LoggingLevel::Debug);
-    }
-
-    #[test]
-    fn logging_level_from_str_info() {
-        let logging_level = <LoggingLevel as FromStr>::from_str("info").unwrap();
-        assert_eq!(logging_level, LoggingLevel::Info);
-    }
-
-    #[test]
-    fn logging_level_from_str_warn() {
-        let logging_level = <LoggingLevel as FromStr>::from_str("warn").unwrap();
-        assert_eq!(logging_level, LoggingLevel::Warn);
-    }
-
-    #[test]
-    fn logging_level_from_str_error() {
-        let logging_level = <LoggingLevel as FromStr>::from_str("error").unwrap();
-        assert_eq!(logging_level, LoggingLevel::Error);
-    }
-
-    #[test]
+    #[rstest]
     fn logging_level_from_str_invalid() {
         let result = <LoggingLevel as FromStr>::from_str("invalid");
         match result {
@@ -778,43 +755,19 @@ mod test {
         }
     }
 
-    #[test]
-    fn logging_level_from_i64_off() {
-        let logging_level = LoggingLevel::try_from(0).unwrap();
-        assert_eq!(logging_level, LoggingLevel::Off);
+    #[rstest]
+    #[case(0, LoggingLevel::Off)]
+    #[case(1, LoggingLevel::Trace)]
+    #[case(2, LoggingLevel::Debug)]
+    #[case(3, LoggingLevel::Info)]
+    #[case(4, LoggingLevel::Warn)]
+    #[case(5, LoggingLevel::Error)]
+    fn logging_level_from_i64(#[case] level: i64, #[case] expected_level: LoggingLevel) {
+        let logging_level = LoggingLevel::try_from(level).unwrap();
+        assert_eq!(logging_level, expected_level);
     }
 
-    #[test]
-    fn logging_level_from_i64_trace() {
-        let logging_level = LoggingLevel::try_from(1).unwrap();
-        assert_eq!(logging_level, LoggingLevel::Trace);
-    }
-
-    #[test]
-    fn logging_level_from_i64_debug() {
-        let logging_level = LoggingLevel::try_from(2).unwrap();
-        assert_eq!(logging_level, LoggingLevel::Debug);
-    }
-
-    #[test]
-    fn logging_level_from_i64_info() {
-        let logging_level = LoggingLevel::try_from(3).unwrap();
-        assert_eq!(logging_level, LoggingLevel::Info);
-    }
-
-    #[test]
-    fn logging_level_from_i64_warn() {
-        let logging_level = LoggingLevel::try_from(4).unwrap();
-        assert_eq!(logging_level, LoggingLevel::Warn);
-    }
-
-    #[test]
-    fn logging_level_from_i64_error() {
-        let logging_level = LoggingLevel::try_from(5).unwrap();
-        assert_eq!(logging_level, LoggingLevel::Error);
-    }
-
-    #[test]
+    #[rstest]
     fn logging_level_from_i64_invalid() {
         let result = LoggingLevel::try_from(-1);
         match result {
@@ -823,19 +776,15 @@ mod test {
         }
     }
 
-    #[test]
-    fn rotation_type_from_str_hourly() {
-        let rotation_type = RotationType::from_str("hourly").unwrap();
-        assert_eq!(rotation_type, RotationType::Hourly);
+    #[rstest]
+    #[case("hourly", RotationType::Hourly)]
+    #[case("daily", RotationType::Daily)]
+    fn rotation_type_from_str(#[case] rotation: &str, #[case] expected_rotation: RotationType) {
+        let rotation_type = RotationType::from_str(rotation).unwrap();
+        assert_eq!(rotation_type, expected_rotation);
     }
 
-    #[test]
-    fn rotation_type_from_str_daily() {
-        let rotation_type = RotationType::from_str("daily").unwrap();
-        assert_eq!(rotation_type, RotationType::Daily);
-    }
-
-    #[test]
+    #[rstest]
     fn rotation_type_from_str_invalid() {
         let result = RotationType::from_str("invalid");
         match result {
@@ -844,19 +793,15 @@ mod test {
         }
     }
 
-    #[test]
-    fn rotation_type_from_i64_hourly() {
-        let rotation_type = RotationType::try_from(1).unwrap();
-        assert_eq!(rotation_type, RotationType::Hourly);
+    #[rstest]
+    #[case(1, RotationType::Hourly)]
+    #[case(2, RotationType::Daily)]
+    fn rotation_type_from_i64(#[case] rotation: i64, #[case] expected_rotation: RotationType) {
+        let rotation_type = RotationType::try_from(rotation).unwrap();
+        assert_eq!(rotation_type, expected_rotation);
     }
 
-    #[test]
-    fn rotation_type_from_i64_daily() {
-        let rotation_type = RotationType::try_from(2).unwrap();
-        assert_eq!(rotation_type, RotationType::Daily);
-    }
-
-    #[test]
+    #[rstest]
     fn invalid_rotation_type_from_i64() {
         let result = RotationType::try_from(-1);
         match result {
@@ -865,123 +810,69 @@ mod test {
         }
     }
 
-    #[test]
-    fn logging_level_off_to_level_filter() {
-        let level_filter: LevelFilter = LoggingLevel::Off.into();
-        assert_eq!(level_filter, LevelFilter::OFF);
+    #[rstest]
+    #[case(LoggingLevel::Off, LevelFilter::OFF)]
+    #[case(LoggingLevel::Trace, LevelFilter::TRACE)]
+    #[case(LoggingLevel::Debug, LevelFilter::DEBUG)]
+    #[case(LoggingLevel::Info, LevelFilter::INFO)]
+    #[case(LoggingLevel::Warn, LevelFilter::WARN)]
+    #[case(LoggingLevel::Error, LevelFilter::ERROR)]
+    fn logging_level_to_level_filter(#[case] level: LoggingLevel, #[case] expected_filter: LevelFilter) {
+        let level_filter: LevelFilter = level.into();
+        assert_eq!(level_filter, expected_filter);
     }
 
-    #[test]
-    fn logging_level_trace_to_level_filter() {
-        let level_filter: LevelFilter = LoggingLevel::Trace.into();
-        assert_eq!(level_filter, LevelFilter::TRACE);
+    #[rstest]
+    #[case(RotationType::Hourly, Rotation::HOURLY)]
+    #[case(RotationType::Daily, Rotation::DAILY)]
+    fn rotation_type_to_rotation(#[case] rotation_type: RotationType, #[case] expected_rotation: Rotation) {
+        let rotation: Rotation = rotation_type.into();
+        assert_eq!(rotation, expected_rotation);
     }
 
-    #[test]
-    fn logging_level_debug_to_level_filter() {
-        let level_filter: LevelFilter = LoggingLevel::Debug.into();
-        assert_eq!(level_filter, LevelFilter::DEBUG);
+    #[rstest]
+    #[case("compact", LoggingFormat::Compact)]
+    #[case("pretty", LoggingFormat::Pretty)]
+    #[case("json", LoggingFormat::Json)]
+    fn logging_format_from_str(#[case] format: &str, #[case] expected_format: LoggingFormat) {
+        let logging_format = <LoggingFormat as FromStr>::from_str(format).unwrap();
+        assert_eq!(logging_format, expected_format);
     }
 
-    #[test]
-    fn logging_level_info_to_level_filter() {
-        let level_filter: LevelFilter = LoggingLevel::Info.into();
-        assert_eq!(level_filter, LevelFilter::INFO);
+    #[rstest]
+    #[case(1, LoggingFormat::Compact)]
+    #[case(2, LoggingFormat::Pretty)]
+    #[case(3, LoggingFormat::Json)]
+    fn logging_format_from_i64(#[case] format: i64, #[case] expected_format: LoggingFormat) {
+        let logging_format = LoggingFormat::try_from(format).unwrap();
+        assert_eq!(logging_format, expected_format);
     }
 
-    #[test]
-    fn logging_level_warn_to_level_filter() {
-        let level_filter: LevelFilter = LoggingLevel::Warn.into();
-        assert_eq!(level_filter, LevelFilter::WARN);
+    #[rstest]
+    #[case("stdout", ConsoleLoggingStream::Stdout)]
+    #[case("stderr", ConsoleLoggingStream::Stderr)]
+    fn console_logging_stream_from_str(#[case] stream: &str, #[case] expected_stream: ConsoleLoggingStream) {
+        let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str(stream).unwrap();
+        assert_eq!(console_logging_stream, expected_stream);
     }
 
-    #[test]
-    fn logging_level_error_to_level_filter() {
-        let level_filter: LevelFilter = LoggingLevel::Error.into();
-        assert_eq!(level_filter, LevelFilter::ERROR);
-    }
-
-    #[test]
-    fn rotation_type_hourly_to_rotation() {
-        let rotation: Rotation = RotationType::Hourly.into();
-        assert_eq!(rotation, Rotation::HOURLY);
-    }
-
-    #[test]
-    fn rotation_type_daily_to_rotation() {
-        let rotation: Rotation = RotationType::Daily.into();
-        assert_eq!(rotation, Rotation::DAILY);
-    }
-
-    #[test]
-    fn logging_format_compact_from_str_compact() {
-        let logging_format = <LoggingFormat as FromStr>::from_str("compact").unwrap();
-        assert_eq!(logging_format, LoggingFormat::Compact);
-    }
-
-    #[test]
-    fn logging_format_pretty_from_str_pretty() {
-        let logging_format = <LoggingFormat as FromStr>::from_str("pretty").unwrap();
-        assert_eq!(logging_format, LoggingFormat::Pretty);
-    }
-
-    #[test]
-    fn logging_format_json_from_str_json() {
-        let logging_format = <LoggingFormat as FromStr>::from_str("json").unwrap();
-        assert_eq!(logging_format, LoggingFormat::Json);
-    }
-
-    #[test]
-    fn logging_format_compact_from_i64_compact() {
-        let logging_format = LoggingFormat::try_from(1).unwrap();
-        assert_eq!(logging_format, LoggingFormat::Compact);
-    }
-
-    #[test]
-    fn logging_format_pretty_from_i64_pretty() {
-        let logging_format = LoggingFormat::try_from(2).unwrap();
-        assert_eq!(logging_format, LoggingFormat::Pretty);
-    }
-
-    #[test]
-    fn logging_format_json_from_i64_json() {
-        let logging_format = LoggingFormat::try_from(3).unwrap();
-        assert_eq!(logging_format, LoggingFormat::Json);
-    }
-
-    #[test]
-    fn console_logging_stream_from_str_stdout() {
-        let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str("stdout").unwrap();
-        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stdout);
-    }
-
-    #[test]
-    fn console_logging_stream_from_str_stderr() {
-        let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str("stderr").unwrap();
-        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stderr);
-    }
-
-    #[test]
+    #[rstest]
     fn console_logging_stream_from_str_invalid() {
         let console_logging_stream = <ConsoleLoggingStream as FromStr>::from_str("invalid");
         assert!(console_logging_stream.is_err());
     }
 
-    #[test]
-    fn console_logging_stream_from_i64_stdout() {
-        let console_logging_stream = ConsoleLoggingStream::try_from(1).unwrap();
-        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stdout);
+    #[rstest]
+    #[case(1, ConsoleLoggingStream::Stdout)]
+    #[case(2, ConsoleLoggingStream::Stderr)]
+    fn console_logging_stream_from_i64(#[case] stream: i64, #[case] expected_stream: ConsoleLoggingStream) {
+        let console_logging_stream = ConsoleLoggingStream::try_from(stream).unwrap();
+        assert_eq!(console_logging_stream, expected_stream);
     }
 
-    #[test]
-    fn console_logging_stream_from_i64_stderr() {
-        let console_logging_stream = ConsoleLoggingStream::try_from(2).unwrap();
-        assert_eq!(console_logging_stream, ConsoleLoggingStream::Stderr);
-    }
-
-    #[test]
+    #[rstest]
     fn console_logging_stream_from_i64_invalid() {
-        let console_logging_stream = ConsoleLoggingStream::try_from(3);
+        let console_logging_stream = ConsoleLoggingStream::try_from(-1);
         assert!(console_logging_stream.is_err());
     }
 }

@@ -16,23 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::commands::{Command, CommandOperation, DirectoryReader};
+use crate::commands::{Command, CommandOperation};
 use std::fmt::{Display, Formatter};
 use tracing_appender::non_blocking::WorkerGuard;
 
-pub struct CliArgs<T: CommandOperation<DirectoryReader>> {
-    pub command: Command<DirectoryReader, T>,
+pub struct CliArgs<T: CommandOperation> {
+    pub command: Command<T>,
     _guard: Option<WorkerGuard>,
 }
 
-impl<T: CommandOperation<DirectoryReader>> Display for CliArgs<T> {
+impl<T: CommandOperation> Display for CliArgs<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "CliArgs {{ command: {} }}", self.command)
     }
 }
 
-impl<T: CommandOperation<DirectoryReader>> CliArgs<T> {
-    pub const fn new(command: Command<DirectoryReader, T>, guard: Option<WorkerGuard>) -> Self {
+impl<T: CommandOperation> CliArgs<T> {
+    pub const fn new(command: Command<T>, guard: Option<WorkerGuard>) -> Self {
         Self {
             command,
             _guard: guard,

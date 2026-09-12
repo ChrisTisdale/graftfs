@@ -20,8 +20,8 @@ use crate::commands::command::CommandData;
 use crate::commands::command_operation::SimulatedData;
 use crate::commands::stow_data::StowStrategies;
 use crate::commands::{
-    ColorSupport, Command, CommandBuildError, CommandOperation, CommandOperationImpl, DirectoryReader, ListData,
-    RestowData, StowData, StowOptions, UnstowData,
+    ColorSupport, Command, CommandBuildError, CommandOperation, CommandOperationImpl, ListData, RestowData, StowData,
+    StowOptions, UnstowData,
 };
 use crate::config::{LinkingStrategy, MatchingStrategy, RegexStrategy};
 use std::collections::HashSet;
@@ -32,7 +32,7 @@ use std::path::PathBuf;
 /// This builder stores the shared command configuration, such as the target
 /// directory, stow directory, and the selected command operation mode.
 #[derive(Default)]
-pub struct CommandBuilder<T: CommandOperation<DirectoryReader>> {
+pub struct CommandBuilder<T: CommandOperation> {
     target: Option<PathBuf>,
     packages: Option<Vec<PathBuf>>,
     dot_file_prefix: Option<String>,
@@ -44,7 +44,7 @@ pub struct CommandBuilder<T: CommandOperation<DirectoryReader>> {
 /// This type extends [`CommandBuilder`] with stow-specific options such as
 /// ignored patterns, folder folding, and adopt behavior.
 #[derive(Default)]
-pub struct StowCommandBuilder<T: CommandOperation<DirectoryReader>> {
+pub struct StowCommandBuilder<T: CommandOperation> {
     builder: CommandBuilder<T>,
     ignored: HashSet<String>,
     overrides: HashSet<String>,
@@ -57,7 +57,7 @@ pub struct StowCommandBuilder<T: CommandOperation<DirectoryReader>> {
 /// This type wraps [`CommandBuilder`] and provides the configuration needed
 /// to build an unstow command.
 #[derive(Default)]
-pub struct UnstowCommandBuilder<T: CommandOperation<DirectoryReader>> {
+pub struct UnstowCommandBuilder<T: CommandOperation> {
     builder: CommandBuilder<T>,
 }
 
@@ -66,18 +66,18 @@ pub struct UnstowCommandBuilder<T: CommandOperation<DirectoryReader>> {
 /// This type reuses the stowed configuration builder and adds restow-specific
 /// command construction.
 #[derive(Default)]
-pub struct RestowCommandBuilder<T: CommandOperation<DirectoryReader>> {
+pub struct RestowCommandBuilder<T: CommandOperation> {
     stow_command: StowCommandBuilder<T>,
 }
 
 #[derive(Default)]
-pub struct ListCommandBuilder<T: CommandOperation<DirectoryReader>> {
+pub struct ListCommandBuilder<T: CommandOperation> {
     builder: CommandBuilder<T>,
     color_support: ColorSupport,
 }
 
 #[allow(unused)]
-impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
+impl<T: CommandOperation + Default> CommandBuilder<T> {
     /// Creates a new command builder with default settings.
     #[must_use]
     pub fn new() -> Self {
@@ -168,7 +168,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> CommandBuilder<T> {
 }
 
 #[allow(unused)]
-impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
+impl<T: CommandOperation + Default> UnstowCommandBuilder<T> {
     /// Creates a new unstow command builder with default settings.
     #[must_use]
     pub fn new() -> Self {
@@ -243,7 +243,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
     ///    }
     /// }
     /// ```
-    pub fn build(self) -> Result<Command<DirectoryReader, T>, CommandBuildError> {
+    pub fn build(self) -> Result<Command<T>, CommandBuildError> {
         let target = self
             .builder
             .target
@@ -257,13 +257,12 @@ impl<T: CommandOperation<DirectoryReader> + Default> UnstowCommandBuilder<T> {
         Ok(Command::Unstow(CommandData {
             data,
             operation: self.builder.operation,
-            _marker: std::marker::PhantomData,
         }))
     }
 }
 
 #[allow(unused)]
-impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
+impl<T: CommandOperation + Default> StowCommandBuilder<T> {
     /// Creates a new stow command builder with default settings.
     #[must_use]
     pub fn new() -> Self {
@@ -405,7 +404,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
     ///    }
     /// }
     /// ```
-    pub fn build(self) -> Result<Command<DirectoryReader, T>, CommandBuildError> {
+    pub fn build(self) -> Result<Command<T>, CommandBuildError> {
         let operation = self.builder.operation;
         let target = self
             .builder
@@ -425,16 +424,12 @@ impl<T: CommandOperation<DirectoryReader> + Default> StowCommandBuilder<T> {
         );
 
         let data = StowData::new(target, directory, stow_options);
-        Ok(Command::Stow(CommandData {
-            data,
-            operation,
-            _marker: std::marker::PhantomData,
-        }))
+        Ok(Command::Stow(CommandData { data, operation }))
     }
 }
 
 #[allow(unused)]
-impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
+impl<T: CommandOperation + Default> RestowCommandBuilder<T> {
     /// Creates a new restow command builder with default settings.
     #[must_use]
     pub fn new() -> Self {
@@ -568,7 +563,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
     ///    }
     /// }
     /// ```
-    pub fn build(self) -> Result<Command<DirectoryReader, T>, CommandBuildError> {
+    pub fn build(self) -> Result<Command<T>, CommandBuildError> {
         let cmd = self.stow_command;
         let operation = cmd.builder.operation;
         let target = cmd
@@ -589,16 +584,12 @@ impl<T: CommandOperation<DirectoryReader> + Default> RestowCommandBuilder<T> {
         );
 
         let data = RestowData::new(target, directory, stow_options);
-        Ok(Command::Restow(CommandData {
-            data,
-            operation,
-            _marker: std::marker::PhantomData,
-        }))
+        Ok(Command::Restow(CommandData { data, operation }))
     }
 }
 
 #[allow(unused)]
-impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
+impl<T: CommandOperation + Default> ListCommandBuilder<T> {
     /// Creates a new list command builder with default settings.
     #[must_use]
     pub fn new() -> Self {
@@ -646,7 +637,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
 
     /// Sets the color support for the list command.
     #[must_use]
-    pub const fn with_color_support(mut self, color_support: ColorSupport) -> Self {
+    pub fn with_color_support(mut self, color_support: ColorSupport) -> Self {
         self.color_support = color_support;
         self
     }
@@ -682,7 +673,7 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
     ///    }
     /// }
     /// ```
-    pub fn build(self) -> Result<Command<DirectoryReader, T>, CommandBuildError> {
+    pub fn build(self) -> Result<Command<T>, CommandBuildError> {
         let target = self
             .builder
             .target
@@ -702,7 +693,6 @@ impl<T: CommandOperation<DirectoryReader> + Default> ListCommandBuilder<T> {
         Ok(Command::List(CommandData {
             data,
             operation: self.builder.operation,
-            _marker: std::marker::PhantomData,
         }))
     }
 }

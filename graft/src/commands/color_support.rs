@@ -17,7 +17,7 @@
  */
 
 use crate::config::ColorSettings;
-use crossterm::style::{StyledContent, Stylize, style};
+use crossterm::style::{Stylize, style};
 use std::fmt::Display;
 use std::path::Path;
 
@@ -25,7 +25,7 @@ use std::path::Path;
 pub enum ColorSupport {
     #[default]
     None,
-    Colored(ColorSettings),
+    Colored(Box<ColorSettings>),
 }
 
 impl Display for ColorSupport {
@@ -38,111 +38,79 @@ impl Display for ColorSupport {
 }
 
 impl ColorSupport {
-    #[must_use]
-    fn format_link_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
-        match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.link),
-        }
-    }
-
     pub fn print_link_text(&self, item: &Path, target: &Path) {
-        println!(
-            "{}: {} {} {}",
-            self.format_link_text("LINK"),
-            self.format_source_text(item.display().to_string().as_str()),
-            self.format_arrow_text("=>"),
-            self.format_target_text(target.display().to_string().as_str())
-        );
-    }
-
-    #[must_use]
-    fn format_unlink_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.unlink),
+            Self::None => println!("LINK: {} => {}", item.display(), target.display()),
+            Self::Colored(config) => println!(
+                "{}{} {} {} {}",
+                style("LINK").with(config.link.link),
+                style(":").with(config.link.colon),
+                style(item.display()).with(config.link.source),
+                style("=>").with(config.link.arrow),
+                style(target.display()).with(config.link.target),
+            ),
         }
     }
 
     pub fn print_unlink_text(&self, item: &Path) {
-        println!(
-            "{}: {}",
-            self.format_unlink_text("UNLINK"),
-            self.format_target_text(item.display().to_string().as_str())
-        );
-    }
-
-    #[must_use]
-    fn format_list_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.list),
+            Self::None => println!("UNLINK: {}", item.display()),
+            Self::Colored(config) => println!(
+                "{}{} {}",
+                style("UNLINK").with(config.unlink.unlink),
+                style(":").with(config.unlink.colon),
+                style(item.display()).with(config.unlink.target),
+            ),
         }
     }
 
     pub fn print_list_text(&self, item: &Path, target: &Path) {
-        println!(
-            "{}: {} {} {}",
-            self.format_list_text("LINK"),
-            self.format_source_text(item.display().to_string().as_str()),
-            self.format_arrow_text("=>"),
-            self.format_target_text(target.display().to_string().as_str())
-        );
-    }
-
-    #[must_use]
-    fn format_remove_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.remove),
+            Self::None => println!("LINK: {} => {}", item.display(), target.display()),
+            Self::Colored(config) => println!(
+                "{}{} {} {} {}",
+                style("LINK").with(config.list.link),
+                style(":").with(config.list.colon),
+                style(item.display()).with(config.list.source),
+                style("=>").with(config.list.arrow),
+                style(target.display()).with(config.list.target),
+            ),
         }
     }
 
     pub fn print_remove_text(&self, item: &Path) {
-        println!(
-            "{}: {}",
-            self.format_remove_text("RM"),
-            self.format_target_text(item.display().to_string().as_str())
-        );
-    }
-
-    #[must_use]
-    fn format_create_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.create),
+            Self::None => println!("RM: {}", item.display()),
+            Self::Colored(config) => println!(
+                "{}{} {}",
+                style("RM").with(config.remove.remove),
+                style(":").with(config.remove.colon),
+                style(item.display()).with(config.remove.target),
+            ),
         }
     }
 
     pub fn print_create_text(&self, item: &Path) {
-        println!(
-            "{}: {}",
-            self.format_create_text("MKDIR"),
-            self.format_target_text(item.display().to_string().as_str())
-        );
-    }
-
-    #[must_use]
-    pub fn format_arrow_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
         match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.arrow),
+            Self::None => println!("MKDIR: {}", item.display()),
+            Self::Colored(config) => println!(
+                "{}{} {}",
+                style("MKDIR").with(config.create.create),
+                style(":").with(config.create.colon),
+                style(item.display()).with(config.create.target),
+            ),
         }
     }
 
-    #[must_use]
-    pub fn format_source_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
+    pub fn print_simulation_text(&self) {
         match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.source),
-        }
-    }
-
-    #[must_use]
-    pub fn format_target_text<'a>(&self, text: &'a str) -> StyledContent<&'a str> {
-        match self {
-            Self::None => style(text),
-            Self::Colored(config) => style(text).with(config.target),
+            Self::None => println!("\nNote: Running in simulation mode.  The file system isn't being modified"),
+            Self::Colored(config) => println!(
+                "\n{}{} {}",
+                style("Note").with(config.simulation.note),
+                style(":").with(config.simulation.colon),
+                style("Running in simulation mode.  The file system isn't being modified").with(config.simulation.text)
+            ),
         }
     }
 }

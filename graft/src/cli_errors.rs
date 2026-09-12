@@ -85,4 +85,10 @@ pub enum CliError {
         folder: String,
         source: std::io::Error,
     },
+    #[snafu(display("Failed to upgrade configuration"))]
+    UpgradeConfig {
+        upgrader: crate::command_line_args::ConfigUpgrader,
+    },
+    #[snafu(display("Failed to upgrade configuration"))]
+    UpgradingConfigError { source: crate::config::ConfigError },
 }

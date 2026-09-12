@@ -175,7 +175,7 @@ impl AppConfiguration {
     #[must_use]
     pub fn color_support(&self) -> ColorSupport {
         if self.config.color.enabled && supports_color::on(Stream::Stdout).is_some() {
-            ColorSupport::Colored(self.config.color.color_settings())
+            ColorSupport::Colored(Box::new(self.config.color.color_settings()))
         } else {
             ColorSupport::None
         }

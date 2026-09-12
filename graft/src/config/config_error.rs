@@ -44,4 +44,6 @@ pub enum ConfigError {
     TomlWriteError { source: toml::ser::Error },
     #[snafu(display("Failed to write TOML file"))]
     WriteError { source: std::io::Error },
+    #[snafu(display("Missing config file"))]
+    MissingConfigFile,
 }
