@@ -44,6 +44,21 @@ impl RegexMatcher {
                 .ok(),
         }
     }
+
+    pub fn try_create_combined_matcher<T: AsRef<str>>(regex_strategy: RegexStrategy, items: &[T]) -> Option<Self> {
+        match regex_strategy {
+            RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
+                .build_many(items)
+                .map(RegexMatcher::Rust)
+                .map_err(|e| warn!("Failed to create Rust regex matcher: {e}"))
+                .ok(),
+            RegexStrategy::Pcre2 => grep::pcre2::RegexMatcherBuilder::new()
+                .build_many(items)
+                .map(RegexMatcher::Pcre2)
+                .map_err(|e| warn!("Failed to create PCRE2 regex matcher: {e}"))
+                .ok(),
+        }
+    }
 }
 
 impl Matcher for RegexMatcher {

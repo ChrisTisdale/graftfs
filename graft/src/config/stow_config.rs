@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::config::matching_strategy_error::MatchingStrategyError;
 use crate::config::{LinkingStrategyError, RegexStrategyError};
 use clap::ValueEnum;
 use serde::de::Visitor;
@@ -105,6 +106,92 @@ impl Display for RegexStrategy {
         match self {
             Self::Rust => write!(f, "rust"),
             Self::Pcre2 => write!(f, "pcre2"),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
+#[repr(i64)]
+pub enum MatchingStrategy {
+    Individual,
+    #[default]
+    Combined,
+}
+
+impl FromStr for MatchingStrategy {
+    type Err = MatchingStrategyError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            s if s.eq_ignore_ascii_case("individual") => Ok(Self::Individual),
+            s if s.eq_ignore_ascii_case("combined") => Ok(Self::Combined),
+            _ => Err(MatchingStrategyError::InvalidMatchingStrategyString {
+                strategy: s.to_string(),
+            }),
+        }
+    }
+}
+
+impl TryFrom<i64> for MatchingStrategy {
+    type Error = MatchingStrategyError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Individual),
+            1 => Ok(Self::Combined),
+            _ => Err(MatchingStrategyError::InvalidMatchingStrategy { strategy: value }),
+        }
+    }
+}
+
+impl Serialize for MatchingStrategy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Self::Individual => "individual",
+            Self::Combined => "combined",
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for MatchingStrategy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct MatchingStrategyVisitor;
+
+        impl Visitor<'_> for MatchingStrategyVisitor {
+            type Value = MatchingStrategy;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("individual or combined")
+            }
+
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                v.try_into().map_err(de::Error::custom)
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                v.parse().map_err(de::Error::custom)
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                self.visit_str(&v)
+            }
+        }
+
+        deserializer.deserialize_any(MatchingStrategyVisitor)
+    }
+}
+
+impl Display for MatchingStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Individual => write!(f, "individual"),
+            Self::Combined => write!(f, "combined"),
         }
     }
 }
@@ -202,6 +289,8 @@ pub struct StowConfig {
     #[serde(default)]
     pub regex_strategy: RegexStrategy,
     #[serde(default)]
+    pub matching_strategy: MatchingStrategy,
+    #[serde(default)]
     pub printing_enabled: bool,
 }
 
@@ -211,18 +300,18 @@ mod tests {
 
     #[test]
     fn linking_strategy_from_str_short() {
-        let soft = <LinkingStrategy as FromStr>::from_str("short");
-        assert!(soft.is_ok());
-        let soft = soft.unwrap();
-        assert_eq!(soft, LinkingStrategy::Short);
+        let strategy = <LinkingStrategy as FromStr>::from_str("short");
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, LinkingStrategy::Short);
     }
 
     #[test]
     fn linking_strategy_from_str_full() {
-        let trace = <LinkingStrategy as FromStr>::from_str("full");
-        assert!(trace.is_ok());
-        let trace = trace.unwrap();
-        assert_eq!(trace, LinkingStrategy::Full);
+        let strategy = <LinkingStrategy as FromStr>::from_str("full");
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, LinkingStrategy::Full);
     }
 
     #[test]
@@ -232,19 +321,19 @@ mod tests {
     }
 
     #[test]
-    fn linking_strategy_from_i64_soft() {
-        let soft = LinkingStrategy::try_from(0);
-        assert!(soft.is_ok());
-        let soft = soft.unwrap();
-        assert_eq!(soft, LinkingStrategy::Short);
+    fn linking_strategy_from_i64_short() {
+        let strategy = LinkingStrategy::try_from(0);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, LinkingStrategy::Short);
     }
 
     #[test]
     fn linking_strategy_from_i64_full() {
-        let full = LinkingStrategy::try_from(1);
-        assert!(full.is_ok());
-        let full = full.unwrap();
-        assert_eq!(full, LinkingStrategy::Full);
+        let strategy = LinkingStrategy::try_from(1);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, LinkingStrategy::Full);
     }
 
     #[test]
@@ -255,18 +344,18 @@ mod tests {
 
     #[test]
     fn regex_strategy_from_str_rust() {
-        let soft = <RegexStrategy as FromStr>::from_str("rust");
-        assert!(soft.is_ok());
-        let soft = soft.unwrap();
-        assert_eq!(soft, RegexStrategy::Rust);
+        let strategy = <RegexStrategy as FromStr>::from_str("rust");
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, RegexStrategy::Rust);
     }
 
     #[test]
     fn regex_strategy_from_str_prce2() {
-        let trace = <RegexStrategy as FromStr>::from_str("pcre2");
-        assert!(trace.is_ok());
-        let trace = trace.unwrap();
-        assert_eq!(trace, RegexStrategy::Pcre2);
+        let strategy = <RegexStrategy as FromStr>::from_str("pcre2");
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, RegexStrategy::Pcre2);
     }
 
     #[test]
@@ -276,24 +365,68 @@ mod tests {
     }
 
     #[test]
-    fn lregex_strategy_from_i64_soft() {
-        let soft = RegexStrategy::try_from(0);
-        assert!(soft.is_ok());
-        let soft = soft.unwrap();
-        assert_eq!(soft, RegexStrategy::Rust);
+    fn regex_strategy_from_i64_rust() {
+        let strategy = RegexStrategy::try_from(0);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, RegexStrategy::Rust);
     }
 
     #[test]
-    fn regex_strategy_from_i64_full() {
-        let full = RegexStrategy::try_from(1);
-        assert!(full.is_ok());
-        let full = full.unwrap();
-        assert_eq!(full, RegexStrategy::Pcre2);
+    fn regex_strategy_from_i64_pcre2() {
+        let strategy = RegexStrategy::try_from(1);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, RegexStrategy::Pcre2);
     }
 
     #[test]
     fn regex_strategy_from_i64_invalid() {
         let invalid = RegexStrategy::try_from(-1);
+        assert!(invalid.is_err());
+    }
+
+    #[test]
+    fn matching_strategy_from_str_individual() {
+        let strategy = <MatchingStrategy as FromStr>::from_str("individual");
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, MatchingStrategy::Individual);
+    }
+
+    #[test]
+    fn matching_strategy_from_str_combined() {
+        let strategy = <MatchingStrategy as FromStr>::from_str("combined");
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, MatchingStrategy::Combined);
+    }
+
+    #[test]
+    fn matching_strategy_from_str_invalid() {
+        let invalid = <MatchingStrategy as FromStr>::from_str("invalid");
+        assert!(invalid.is_err());
+    }
+
+    #[test]
+    fn matching_strategy_from_i64_individual() {
+        let strategy = MatchingStrategy::try_from(0);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, MatchingStrategy::Individual);
+    }
+
+    #[test]
+    fn matching_strategy_from_i64_combined() {
+        let strategy = MatchingStrategy::try_from(1);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, MatchingStrategy::Combined);
+    }
+
+    #[test]
+    fn matching_strategy_from_i64_invalid() {
+        let invalid = MatchingStrategy::try_from(-1);
         assert!(invalid.is_err());
     }
 }

@@ -186,6 +186,7 @@ target = "Magenta"
 [stow]
 linking_strategy = "short"
 regex_strategy = "rust"
+matching_strategy = "combined"
 printing_enable = false
 ```
 
@@ -241,6 +242,8 @@ printing_enable = false
   - Possible values: 'short', 'full'
 - `regex_strategy`: The regex strategy to use when checking against ignored and overriden files for stowing (default: 'rust')
   - Possible values: 'rust', 'pcre2'
+- `matching_strategy`: The matching strategy to use when evaluating the ignored and overriden files for stowing (default: 'combined')
+  - Possible values: 'combined', 'individual'
 - `printing_enable`: Whether to enable printing detailed information for stowing or unstowing.
 
 ### Configuration Location

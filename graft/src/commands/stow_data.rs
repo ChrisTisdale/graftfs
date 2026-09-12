@@ -17,10 +17,10 @@
  */
 
 use crate::commands::regex_matcher::RegexMatcher;
-use crate::config::{LinkingStrategy, RegexStrategy};
+use crate::config::{LinkingStrategy, MatchingStrategy, RegexStrategy};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
-use tracing::debug;
+use tracing::{Level, debug, enabled, trace};
 
 #[derive(Default)]
 pub struct StowFilter {
@@ -52,42 +52,79 @@ pub struct StowData {
     pub(crate) options: StowOptions,
 }
 
+#[derive(Default)]
+pub struct StowStrategies {
+    pub linking: LinkingStrategy,
+    pub regex: RegexStrategy,
+    pub matching: MatchingStrategy,
+}
+
+impl StowStrategies {
+    fn create_matcher<T: AsRef<str> + Display, I: Iterator<Item = T>>(
+        &self,
+        regex_strings: I,
+        match_type: &str,
+    ) -> Vec<RegexMatcher> {
+        match self.matching {
+            MatchingStrategy::Individual => regex_strings
+                .filter_map(|item| {
+                    debug!("Adding {match_type} matched item: {item}");
+                    RegexMatcher::try_create_matcher(self.regex, item)
+                })
+                .collect(),
+            MatchingStrategy::Combined => {
+                let regex_strings = regex_strings.collect::<Vec<T>>();
+                if enabled!(Level::DEBUG) {
+                    for item in &regex_strings {
+                        debug!("Adding {match_type} matched item: {item}");
+                    }
+                }
+
+                let matcher = RegexMatcher::try_create_combined_matcher(self.regex, &regex_strings);
+                matcher.map_or_else(Vec::new, |m| vec![m])
+            }
+        }
+    }
+}
+
+impl Display for StowStrategies {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "StowStrategies: linking={}, regex={}, matching={}",
+            self.linking, self.regex, self.matching
+        )
+    }
+}
+
 impl StowOptions {
     #[must_use]
     pub fn new<T: AsRef<str> + Display, I: Iterator<Item = T>, O: Iterator<Item = T>>(
         dot_file_prefix: Option<String>,
-        linking_strategy: LinkingStrategy,
-        regex_strategy: RegexStrategy,
+        strategies: &StowStrategies,
         no_folding: bool,
         ignored: I,
         overrides: O,
     ) -> Self {
+        trace!(
+            "Creating stow options.  dot_file_prefix={}, strategies={{ {} }}, no_folding={}",
+            dot_file_prefix.as_deref().unwrap_or_default(),
+            strategies,
+            no_folding
+        );
+
         debug!("Creating ignore matches");
-        let ignored = ignored
-            .filter_map(|i| Self::build_ignore_matcher(regex_strategy, i))
-            .collect();
+        let ignored = strategies.create_matcher(ignored, "ignored");
 
         debug!("Creating override matches");
-        let overrides = overrides
-            .filter_map(|o| Self::build_override_matcher(regex_strategy, o))
-            .collect();
+        let overrides = strategies.create_matcher(overrides, "override");
 
         Self {
             no_folding,
-            linking_strategy,
+            linking_strategy: strategies.linking,
             dot_file_prefix,
             filter: StowFilter { ignored, overrides },
         }
-    }
-
-    fn build_ignore_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<RegexMatcher> {
-        debug!("Adding ignored matched item: {item}");
-        RegexMatcher::try_create_matcher(regex_strategy, item)
-    }
-
-    fn build_override_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<RegexMatcher> {
-        debug!("Adding override matched item: {item}");
-        RegexMatcher::try_create_matcher(regex_strategy, item)
     }
 }
 

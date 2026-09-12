@@ -29,6 +29,7 @@ mod console_logging_stream_error;
 mod format_error;
 mod level_error;
 mod linking_strategy_error;
+mod matching_strategy_error;
 mod overrides;
 pub mod path_resolver;
 mod regex_strategy_error;
@@ -57,7 +58,7 @@ use std::fmt::Display;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
-pub use stow_config::{LinkingStrategy, RegexStrategy, StowConfig};
+pub use stow_config::{LinkingStrategy, MatchingStrategy, RegexStrategy, StowConfig};
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct Config {
@@ -260,9 +261,22 @@ impl Config {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config::color_config::SerializeColorSettings;
     use crate::config::logging_config::{ConsoleLoggingStream, LoggingLevel, RotationType};
+    use crate::config::stow_config::MatchingStrategy;
     use crossterm::style::Color;
     use std::path::PathBuf;
+
+    const COLOR_TEST: SerializeColorSettings = SerializeColorSettings {
+        link: Some(Color::Green),
+        unlink: Some(Color::Red),
+        list: Some(Color::Blue),
+        remove: Some(Color::Magenta),
+        create: Some(Color::Yellow),
+        arrow: Some(Color::Cyan),
+        source: Some(Color::Black),
+        target: Some(Color::Grey),
+    };
 
     #[test]
     fn toml_version_1_deserialization() {
@@ -292,15 +306,16 @@ mod test {
         link = "green"
         unlink = "red"
         list = "blue"
-        remove = "yellow"
-        create = "cyan"
-        arrow = "magenta"
-        source = "white"
-        target = "black"
+        remove = "magenta"
+        create = "yellow"
+        arrow = "cyan"
+        source = "black"
+        target = "grey"
 
         [stow]
         linking_strategy = "short"
         regex_strategy = "rust"
+        matching_strategy = "individual"
         printing_enabled = false
         "#;
 
@@ -331,17 +346,7 @@ mod test {
 
         assert_eq!(config.logging, expected_logging);
 
-        let settings = ColorSettings {
-            link: Color::Green,
-            unlink: Color::Red,
-            list: Color::Blue,
-            remove: Color::Yellow,
-            create: Color::Cyan,
-            arrow: Color::Magenta,
-            source: Color::White,
-            target: Color::Black,
-        };
-
+        let settings = COLOR_TEST;
         let expected_color = ColorConfig {
             enabled: true,
             settings,
@@ -352,6 +357,7 @@ mod test {
         let expected_stow = StowConfig {
             linking_strategy: LinkingStrategy::Short,
             regex_strategy: RegexStrategy::Rust,
+            matching_strategy: MatchingStrategy::Individual,
             printing_enabled: false,
         };
 
@@ -681,14 +687,14 @@ mod test {
 
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
         assert!(config.color.enabled);
-        assert_eq!(config.color.settings.link, Color::Green);
-        assert_eq!(config.color.settings.unlink, Color::Red);
-        assert_eq!(config.color.settings.list, Color::Blue);
-        assert_eq!(config.color.settings.remove, Color::Magenta);
-        assert_eq!(config.color.settings.create, Color::Yellow);
-        assert_eq!(config.color.settings.arrow, Color::Cyan);
-        assert_eq!(config.color.settings.source, Color::Black);
-        assert_eq!(config.color.settings.target, Color::White);
+        assert_eq!(config.color.settings.link, Some(Color::Green));
+        assert_eq!(config.color.settings.unlink, Some(Color::Red));
+        assert_eq!(config.color.settings.list, Some(Color::Blue));
+        assert_eq!(config.color.settings.remove, Some(Color::Magenta));
+        assert_eq!(config.color.settings.create, Some(Color::Yellow));
+        assert_eq!(config.color.settings.arrow, Some(Color::Cyan));
+        assert_eq!(config.color.settings.source, Some(Color::Black));
+        assert_eq!(config.color.settings.target, Some(Color::White));
     }
 
     #[test]
@@ -711,16 +717,7 @@ mod test {
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
         let expected_color = ColorConfig {
             enabled: true,
-            settings: ColorSettings {
-                link: Color::Green,
-                unlink: Color::Red,
-                list: Color::Blue,
-                remove: Color::Magenta,
-                create: Color::Yellow,
-                arrow: Color::Cyan,
-                source: Color::Black,
-                target: Color::Grey,
-            },
+            settings: COLOR_TEST,
         };
 
         assert_eq!(config.color, expected_color);
@@ -746,51 +743,93 @@ mod test {
         let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
         let expected_color = ColorConfig {
             enabled: true,
-            settings: ColorSettings {
-                link: Color::Rgb {
+            settings: SerializeColorSettings {
+                link: Some(Color::Rgb {
                     r: 0x27,
                     g: 0xF5,
                     b: 0x4D,
-                },
-                unlink: Color::Rgb {
+                }),
+                unlink: Some(Color::Rgb {
                     r: 0xF5,
                     g: 0x49,
                     b: 0x27,
-                },
-                list: Color::Rgb {
+                }),
+                list: Some(Color::Rgb {
                     r: 0x27,
                     g: 0xF5,
                     b: 0x4D,
-                },
-                remove: Color::Rgb {
+                }),
+                remove: Some(Color::Rgb {
                     r: 0xF5,
                     g: 0x49,
                     b: 0x27,
-                },
-                create: Color::Rgb {
+                }),
+                create: Some(Color::Rgb {
                     r: 0xF5,
                     g: 0x49,
                     b: 0x27,
-                },
-                arrow: Color::Rgb {
+                }),
+                arrow: Some(Color::Rgb {
                     r: 0xF5,
                     g: 0x49,
                     b: 0x27,
-                },
-                source: Color::Rgb {
+                }),
+                source: Some(Color::Rgb {
                     r: 0xF5,
                     g: 0x49,
                     b: 0x27,
-                },
-                target: Color::Rgb {
+                }),
+                target: Some(Color::Rgb {
                     r: 0xF5,
                     g: 0x49,
                     b: 0x27,
-                },
+                }),
             },
         };
 
         assert_eq!(config.color, expected_color);
+    }
+
+    #[test]
+    fn toml_version_1_color_settings_allows_partial_colors() {
+        let config_content = r#"
+        version = 1
+
+       [color]
+       enabled = true
+       link = "Red"
+       "#;
+
+        let config: Config = toml::from_str(config_content).expect("Failed to parse TOML");
+        let expected_color = ColorConfig {
+            enabled: true,
+            settings: SerializeColorSettings {
+                link: Some(Color::Red),
+                unlink: None,
+                list: None,
+                remove: None,
+                create: None,
+                arrow: None,
+                source: None,
+                target: None,
+            },
+        };
+
+        assert_eq!(config.color, expected_color);
+
+        let default_color = ColorSettings::default();
+        let expected_color_settings = ColorSettings {
+            link: Color::Red,
+            unlink: default_color.unlink,
+            list: default_color.list,
+            remove: default_color.remove,
+            create: default_color.create,
+            arrow: default_color.arrow,
+            source: default_color.source,
+            target: default_color.target,
+        };
+
+        assert_eq!(config.color.color_settings(), expected_color_settings);
     }
 
     #[test]
@@ -806,6 +845,7 @@ mod test {
             linking_strategy = "{strategy}"
             "#
             );
+
             let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
             assert_eq!(config.stow.linking_strategy, strategy);
 
@@ -914,6 +954,68 @@ mod test {
 
             let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
             assert_eq!(config.stow.regex_strategy, strategy);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_ignores_matching_strategy_case() {
+        let allowed_strategies = vec![MatchingStrategy::Individual, MatchingStrategy::Combined];
+
+        for strategy in allowed_strategies {
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            matching_strategy = "{strategy}"
+            "#
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.matching_strategy, strategy);
+
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            matching_strategy = "{}"
+            "#,
+                strategy.to_string().to_uppercase()
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.matching_strategy, strategy);
+
+            let config_content = format!(
+                r#"
+            version = 1
+
+            [stow]
+            matching_strategy = "{}"
+            "#,
+                strategy.to_string().to_lowercase()
+            );
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.matching_strategy, strategy);
+        }
+    }
+
+    #[test]
+    fn toml_version_1_matching_strategy_can_use_numeric_value() {
+        let allowed_strategies = vec![MatchingStrategy::Individual, MatchingStrategy::Combined];
+
+        for strategy in allowed_strategies {
+            let config_content = format!(
+                "
+            version = 1
+
+            [stow]
+            matching_strategy = {}
+            ",
+                strategy as i64
+            );
+
+            let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+            assert_eq!(config.stow.matching_strategy, strategy);
         }
     }
 }
