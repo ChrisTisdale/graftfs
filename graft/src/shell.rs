@@ -75,7 +75,7 @@ impl ValueEnum for Shell {
             Self::Bash => PossibleValue::new("bash"),
             Self::Elvish => PossibleValue::new("elvish"),
             Self::Fish => PossibleValue::new("fish"),
-            Self::PowerShell => PossibleValue::new("powershell"),
+            Self::PowerShell => PossibleValue::new("powershell").alias("pwsh"),
             Self::Zsh => PossibleValue::new("zsh"),
             #[cfg(feature = "nushell")]
             Self::Nushell => PossibleValue::new("nushell").alias("nu"),

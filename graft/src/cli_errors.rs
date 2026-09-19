@@ -56,10 +56,6 @@ pub enum CliError {
         file: String,
         source: crate::config::ResolveError,
     },
-    #[snafu(display("Printing completions requested."))]
-    PrintCompletions {
-        printer: crate::command_line_args::CompletionPrinter,
-    },
     #[snafu(display("Invalid or unknown shell.  Please specify a valid shell."))]
     InvalidShell,
     #[snafu(display("Failed to create output file {path}"))]
@@ -69,10 +65,6 @@ pub enum CliError {
     },
     #[snafu(display("Failed to generate completions"))]
     GenerateCompletionsError { source: std::io::Error },
-    #[snafu(display("Failed to export configuration"))]
-    ExportConfig {
-        printer: crate::command_line_args::ConfigPrinter,
-    },
     #[snafu(display("Failed to create file {file}"))]
     FileCreationError {
         file: String,
@@ -84,10 +76,6 @@ pub enum CliError {
     FolderCreationError {
         folder: String,
         source: std::io::Error,
-    },
-    #[snafu(display("Failed to upgrade configuration"))]
-    UpgradeConfig {
-        upgrader: crate::command_line_args::ConfigUpgrader,
     },
     #[snafu(display("Failed to upgrade configuration"))]
     UpgradingConfigError { source: crate::config::ConfigError },

@@ -28,6 +28,7 @@ use crate::config::{
     AppConfiguration, Config, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel,
     MatchingStrategy, RegexStrategy, path_resolver,
 };
+use crate::executor::Executor;
 use crate::shell::Shell;
 use clap::builder::Styles;
 use clap::error::ErrorKind;
@@ -73,7 +74,7 @@ struct GlobalArgs {
     config_file: Option<PathBuf>,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct DirectoryArgs {
     #[arg(
         short = 'd',
@@ -110,7 +111,7 @@ struct DirectoryArgs {
     packages: Vec<String>,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct LoggingArgs {
     #[arg(
         short = 'l',
@@ -227,7 +228,7 @@ struct UnstowArgs {
     printing: Option<bool>,
 }
 
-#[derive(Args, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Args, Default, Clone, PartialEq, Eq)]
 struct CompletionArgs {
     #[arg(
         value_enum,
@@ -394,7 +395,6 @@ pub struct CommandLineProcessor {
     process_command: ProcessCommands,
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct CompletionPrinter {
     shell: Shell,
     output: Option<PathBuf>,
@@ -443,7 +443,6 @@ impl CompletionPrinter {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct ConfigPrinter {
     output: Option<PathBuf>,
     config_file: Option<PathBuf>,
@@ -506,7 +505,6 @@ impl ConfigPrinter {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct ConfigUpgrader {
     config_file: Option<PathBuf>,
     output: Option<PathBuf>,
@@ -576,7 +574,7 @@ impl CommandLineProcessor {
     ///
     /// match CommandLineProcessor::get_cli_args() {
     ///     Ok(cli_args) => {
-    ///         println!("Command setup successfully: {}", cli_args.command);
+    ///         println!("Executor setup successfully: {}", cli_args.executor);
     ///     }
     ///     Err(e) => {
     ///         eprintln!("Failed to parse command-line arguments: {e}");
@@ -591,8 +589,8 @@ impl CommandLineProcessor {
             ProcessCommands::Restow(stow_args) => Self::restow(stow_args),
             ProcessCommands::List(list_args) => Self::list(list_args),
             ProcessCommands::Completions(completion_args) => Self::completions(completion_args),
-            ProcessCommands::ExportConfig(export_args) => Self::export_config(export_args),
-            ProcessCommands::UpgradeConfig(upgrade_args) => Self::upgrade_config(upgrade_args),
+            ProcessCommands::ExportConfig(export_args) => Ok(Self::export_config(export_args)),
+            ProcessCommands::UpgradeConfig(upgrade_args) => Ok(Self::upgrade_config(upgrade_args)),
         }
     }
 
@@ -756,7 +754,7 @@ impl CommandLineProcessor {
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Stow" })?;
 
-        Ok(CliArgs::new(command, guard))
+        Ok(CliArgs::new(Executor::Command(command), guard))
     }
 
     fn delete(unstow_args: UnstowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
@@ -789,7 +787,7 @@ impl CommandLineProcessor {
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Unstow" })?;
 
-        Ok(CliArgs::new(command, guard))
+        Ok(CliArgs::new(Executor::Command(command), guard))
     }
 
     fn restow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
@@ -838,7 +836,7 @@ impl CommandLineProcessor {
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Restow" })?;
 
-        Ok(CliArgs::new(command, guard))
+        Ok(CliArgs::new(Executor::Command(command), guard))
     }
 
     fn list(list_args: ListArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
@@ -868,7 +866,7 @@ impl CommandLineProcessor {
             .with_dot_file_prefix(list_args.directory.dotfiles)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "List" })?;
-        Ok(CliArgs::new(command, guard))
+        Ok(CliArgs::new(Executor::Command(command), guard))
     }
 
     fn completions(completion_args: CompletionArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
@@ -876,25 +874,31 @@ impl CommandLineProcessor {
             .shell
             .map_or_else(|| Shell::from_env().ok_or(CliError::InvalidShell), Ok)?;
 
-        Err(CliError::PrintCompletions {
-            printer: CompletionPrinter::new(shell, completion_args.output),
-        })
+        Ok(CliArgs::new(
+            Executor::Completion(CompletionPrinter::new(shell, completion_args.output)),
+            None,
+        ))
     }
 
-    fn export_config(export_config_args: ExportConfigArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
-        Err(CliError::ExportConfig {
-            printer: ConfigPrinter::new(
+    fn export_config(export_config_args: ExportConfigArgs) -> CliArgs<CommandOperationImpl> {
+        CliArgs::new(
+            Executor::Export(ConfigPrinter::new(
                 export_config_args.output,
                 export_config_args.config_file,
                 export_config_args.upgrade,
-            ),
-        })
+            )),
+            None,
+        )
     }
 
-    fn upgrade_config(upgrade_args: ConfigUpgradeArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
-        Err(CliError::UpgradeConfig {
-            upgrader: ConfigUpgrader::new(upgrade_args.config_file, upgrade_args.output),
-        })
+    fn upgrade_config(upgrade_args: ConfigUpgradeArgs) -> CliArgs<CommandOperationImpl> {
+        CliArgs::new(
+            Executor::Upgrade(ConfigUpgrader::new(
+                upgrade_args.config_file,
+                upgrade_args.output,
+            )),
+            None,
+        )
     }
 
     fn resolve_config_file(path: &Path) -> Result<PathBuf, CliError> {

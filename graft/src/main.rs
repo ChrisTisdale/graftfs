@@ -140,11 +140,13 @@ pub mod cli_errors;
 pub mod command_line_args;
 pub mod commands;
 pub mod config;
+pub mod executor;
 pub mod shell;
 pub mod shell_converter_error;
 
 use crate::cli_errors::{CliError, CommandSnafu};
 use crate::command_line_args::CommandLineProcessor;
+use crate::executor::Executor;
 use snafu::ResultExt;
 use tracing::{info, trace};
 
@@ -152,9 +154,6 @@ use tracing::{info, trace};
 fn main() -> Result<(), CliError> {
     match process_command_line_args() {
         Ok(()) => Ok(()),
-        Err(CliError::PrintCompletions { printer }) => printer.print_completions(),
-        Err(CliError::ExportConfig { printer }) => printer.print_config(),
-        Err(CliError::UpgradeConfig { upgrader }) => upgrader.upgrade_config(),
         Err(CliError::CommandLineParsingError { source }) => source.exit(),
         Err(e) => Err(e),
     }
@@ -163,10 +162,15 @@ fn main() -> Result<(), CliError> {
 fn process_command_line_args() -> Result<(), CliError> {
     let args = CommandLineProcessor::get_cli_args()?;
     trace!("Processed Commandline Arguments: {args}");
-    let command = args.command;
-    let command_text = format!("{command}");
-    command.execute().context(CommandSnafu)?;
+    let executor = args.executor;
+    let executor_text = format!("{executor}");
+    match executor {
+        Executor::Command(cmd) => cmd.execute().context(CommandSnafu)?,
+        Executor::Completion(cmd) => cmd.print_completions()?,
+        Executor::Export(cmd) => cmd.print_config()?,
+        Executor::Upgrade(cmd) => cmd.upgrade_config()?,
+    }
 
-    info!("Successfully processed command {command_text}");
+    info!("Successfully processed {executor_text}");
     Ok(())
 }
