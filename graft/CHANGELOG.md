@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.6.0 (2026-09-19)
+
+### New Features
+
+ - <csr-id-66cc76d5a723620d0cfb4337c4b6fce3942f3c17/> Adding simulation note
+   * feat: Adding simulation note
+   
+   Adding a simulation note when running in simulation mode
+   
+   Moving several of the commands out of errors for easier understanding of
+   how some of the commands work
+ - <csr-id-54293a348f579af5fbed2eefa494473d7a8641b7/> Adding combined regex support
+   Adding support for combing regex for ignores and overrides.  Adding more
+   detail to show when in simulation mode.
+
+### Bug Fixes
+
+ - <csr-id-c0a04b827f073465560875707d928f3f476e1e6e/> Addressing issues with override file
+ - <csr-id-6c18da30e072d6fc10897ec5fcbbaae481ddd6e4/> Fixing xtask dist
+   Fixing issues with xtask not working correctly with all the arguments.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 14 calendar days.
+ - 19 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 unique issues were worked on: [#34](https://github.com/ChrisTisdale/graftfs/issues/34), [#35](https://github.com/ChrisTisdale/graftfs/issues/35), [#36](https://github.com/ChrisTisdale/graftfs/issues/36)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#34](https://github.com/ChrisTisdale/graftfs/issues/34)**
+    - Addressing issues with override file ([`c0a04b8`](https://github.com/ChrisTisdale/graftfs/commit/c0a04b827f073465560875707d928f3f476e1e6e))
+ * **[#35](https://github.com/ChrisTisdale/graftfs/issues/35)**
+    - Adding combined regex support ([`54293a3`](https://github.com/ChrisTisdale/graftfs/commit/54293a348f579af5fbed2eefa494473d7a8641b7))
+ * **[#36](https://github.com/ChrisTisdale/graftfs/issues/36)**
+    - Adding simulation note ([`66cc76d`](https://github.com/ChrisTisdale/graftfs/commit/66cc76d5a723620d0cfb4337c4b6fce3942f3c17))
+ * **Uncategorized**
+    - Fixing xtask dist ([`6c18da3`](https://github.com/ChrisTisdale/graftfs/commit/6c18da30e072d6fc10897ec5fcbbaae481ddd6e4))
+</details>
+
 ## v1.5.1 (2026-08-31)
 
 ### Bug Fixes
@@ -16,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -27,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release graftfs v1.5.1 ([`9ab124a`](https://github.com/ChrisTisdale/graftfs/commit/9ab124a5a6bf6e57de053309a63acc2dc3776cbd))
     - Fixing printing config name issue ([`f0bb10d`](https://github.com/ChrisTisdale/graftfs/commit/f0bb10d95c064d5798f4a45c10c3c3997ed0015b))
 </details>
 
