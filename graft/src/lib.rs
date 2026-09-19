@@ -27,6 +27,8 @@ pub mod commands;
 #[allow(unused)]
 pub mod config;
 #[allow(unused)]
+pub mod executor;
+#[allow(unused)]
 pub mod shell;
 #[allow(unused)]
 pub mod shell_converter_error;

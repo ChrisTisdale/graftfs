@@ -153,7 +153,7 @@ directory. The file is in TOML format.
 Example `config.toml`:
 
 ```toml
-version = 1
+version = 2
 
 [ignored]
 file = ".graft-ignore"
@@ -182,6 +182,9 @@ create = "Green"
 arrow = "Blue"
 source = "Yellow"
 target = "Magenta"
+note = "Yellow"
+colon = "Yellow"
+simulation = "Yellow"
 
 [stow]
 linking_strategy = "short"
@@ -235,14 +238,22 @@ printing_enable = false
   - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00').
 - `target`: The color of the target text (default: '#F5BDE6')
   - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
+- `note`: The color of the note text (default: '')
+  - Colors can be specified as eitehr a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
+- `colon`: The color of the colon text (default: '')
+  - Colors can be specified as eitehr a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
+- `simulation`: The color of the simulation text (default: '')
+  - Colors can be specified as eitehr a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
 
 #### Stow
 
 - `linking_strategy`: The linking strategy to use when stowing files (default: 'short')
   - Possible values: 'short', 'full'
-- `regex_strategy`: The regex strategy to use when checking against ignored and overriden files for stowing (default: 'rust')
+- `regex_strategy`: The regex strategy to use when checking against ignored and overriden files for stowing (default:
+  'rust')
   - Possible values: 'rust', 'pcre2'
-- `matching_strategy`: The matching strategy to use when evaluating the ignored and overriden files for stowing (default: 'combined')
+- `matching_strategy`: The matching strategy to use when evaluating the ignored and overriden files for stowing
+  (default: 'combined')
   - Possible values: 'combined', 'individual'
 - `printing_enable`: Whether to enable printing detailed information for stowing or unstowing.
 

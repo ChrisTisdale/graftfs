@@ -16,27 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use crate::commands::CommandOperation;
-use crate::executor::Executor;
+use crate::command_line_args::{CompletionPrinter, ConfigPrinter, ConfigUpgrader};
+use crate::commands::{Command, CommandOperation};
 use std::fmt::{Display, Formatter};
-use tracing_appender::non_blocking::WorkerGuard;
 
-pub struct CliArgs<T: CommandOperation> {
-    pub executor: Executor<T>,
-    _guard: Option<WorkerGuard>,
+pub enum Executor<T: CommandOperation> {
+    Command(Command<T>),
+    Completion(CompletionPrinter),
+    Export(ConfigPrinter),
+    Upgrade(ConfigUpgrader),
 }
 
-impl<T: CommandOperation> Display for CliArgs<T> {
+impl<T: CommandOperation> Display for Executor<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CliArgs {{ excutor: {} }}", self.executor)
-    }
-}
-
-impl<T: CommandOperation> CliArgs<T> {
-    pub const fn new(executor: Executor<T>, guard: Option<WorkerGuard>) -> Self {
-        Self {
-            executor,
-            _guard: guard,
+        match self {
+            Self::Command(cmd) => write!(f, "Command({cmd})"),
+            Self::Completion(cmd) => write!(f, "Completion({cmd})"),
+            Self::Export(cmd) => write!(f, "Export({cmd})"),
+            Self::Upgrade(cmd) => write!(f, "Upgrade({cmd})"),
         }
     }
 }

@@ -27,7 +27,9 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, os, path};
 use tracing::{info, warn};
 
-pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
+pub trait CommandOperation {
+    type Item: Iterator<Item = Result<PathBuf, CommandError>>;
+
     /// Creates a symbolic link from the `source` path to the `target` path.
     ///
     /// # Parameters
@@ -337,7 +339,7 @@ pub trait CommandOperation<T: Iterator<Item = Result<PathBuf, CommandError>>> {
     ///     Err(e) => println!("Failed to read directory: {}", e),
     /// }
     /// ```
-    fn read_directory(&self, target: &Path) -> Result<T, CommandError>;
+    fn read_directory(&self, target: &Path) -> Result<Self::Item, CommandError>;
 }
 
 /// Represents the implementation type of the command operation.
@@ -358,6 +360,14 @@ impl Default for CommandOperationImpl {
     }
 }
 
+impl Drop for CommandOperationImpl {
+    fn drop(&mut self) {
+        if let Self::Simulated(data) = self {
+            data.color_support.print_simulation_text();
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 struct LinkedDirectory {
     path: PathBuf,
@@ -375,7 +385,7 @@ pub struct SimulatedData {
 }
 
 impl SimulatedData {
-    pub const fn with_color_support(mut self, color_support: ColorSupport) -> Self {
+    pub fn with_color_support(mut self, color_support: ColorSupport) -> Self {
         self.color_support = color_support;
         self
     }
@@ -575,7 +585,9 @@ impl Iterator for DirectoryReader {
     }
 }
 
-impl CommandOperation<DirectoryReader> for CommandOperationImpl {
+impl CommandOperation for CommandOperationImpl {
+    type Item = DirectoryReader;
+
     #[cfg(unix)]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
         info!("Linking {} {}", item.display(), target.display());

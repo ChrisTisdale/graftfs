@@ -25,7 +25,7 @@ use grep::matcher::Matcher;
 use snafu::ResultExt;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Display, Formatter};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 /// Represents a structure that encapsulates data and an associated operation related to command processing.
@@ -40,14 +40,9 @@ use tracing::{debug, error, info, instrument, trace, warn};
 ///   the source of paths and potential errors during command execution.
 /// - `TOperation`: A type that implements the `CommandOperation<TIter>` trait. This defines the
 ///   operation associated with processing the command's data.
-pub struct CommandData<
-    TData,
-    TIter: Iterator<Item = Result<PathBuf, CommandError>>,
-    TOperation: CommandOperation<TIter>,
-> {
+pub struct CommandData<TData, TOperation: CommandOperation> {
     pub(crate) data: TData,
     pub(crate) operation: TOperation,
-    pub(crate) _marker: std::marker::PhantomData<TIter>,
 }
 
 /// Represents a set of commands for managing stowing operations with associated data.
@@ -96,16 +91,14 @@ pub struct CommandData<
 ///     return Ok(());
 /// }
 /// ```
-pub enum Command<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>> {
-    Stow(CommandData<StowData, TIter, TCommand>),
-    Unstow(CommandData<UnstowData, TIter, TCommand>),
-    Restow(CommandData<RestowData, TIter, TCommand>),
-    List(CommandData<ListData, TIter, TCommand>),
+pub enum Command<TCommand: CommandOperation> {
+    Stow(CommandData<StowData, TCommand>),
+    Unstow(CommandData<UnstowData, TCommand>),
+    Restow(CommandData<RestowData, TCommand>),
+    List(CommandData<ListData, TCommand>),
 }
 
-impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>> Display
-    for Command<TIter, TCommand>
-{
+impl<TCommand: CommandOperation> Display for Command<TCommand> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Stow(_) => write!(f, "Stow"),
@@ -116,9 +109,7 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
     }
 }
 
-impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>> Debug
-    for Command<TIter, TCommand>
-{
+impl<TCommand: CommandOperation> Debug for Command<TCommand> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Stow(d) => f.debug_struct("Stow").field("data", &d.data).finish(),
@@ -134,9 +125,7 @@ struct StowPackage<'a, TData> {
     data: &'a TData,
 }
 
-impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOperation<TIter>>
-    Command<TIter, TCommand>
-{
+impl<TCommand: CommandOperation> Command<TCommand> {
     /// Execute the command.
     ///
     /// # Arguments
@@ -587,8 +576,8 @@ impl<TIter: Iterator<Item = Result<PathBuf, CommandError>>, TCommand: CommandOpe
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use crate::commands::{CommandBuildError, CommandBuilder, CommandOperationImpl, DirectoryReader};
+    use crate::commands::{CommandBuildError, CommandBuilder, CommandOperationImpl};
+    use rstest::rstest;
     use std::collections::HashSet;
     use std::error::Error;
     use std::path::PathBuf;
@@ -664,7 +653,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[rstest]
     fn existing_directory_test() {
         let setup = StowSetup::new("existing_directory_test").unwrap();
         let expected_files = [
@@ -691,7 +680,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn basic_stow_test() {
         let setup = StowSetup::new("basic_stow_test").unwrap();
         let expected_files = [
@@ -711,7 +700,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn dotfiles_stow_test() {
         let setup = StowSetup::new("dotfiles_test").unwrap();
         let expected_files = [
@@ -737,7 +726,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn ignored_items_stow_test() {
         let setup = StowSetup::new("ignored_test").unwrap();
         let expected_files = [setup.setup_path.join("keep-file.txt")];
@@ -760,7 +749,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn conflict_error_test() {
         let setup = StowSetup::new("conflict_test").unwrap();
         // Create a file in the target that conflicts with something in the stow directory
@@ -786,7 +775,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn folding_stow_test() {
         let setup = StowSetup::new("folding_test").unwrap();
         // In folding mode (default), dir1 should be linked directly
@@ -806,7 +795,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn no_folding_stow_test() {
         let setup = StowSetup::new("no_folding_test").unwrap();
         // In no-folding mode, dir1 should be created and file1.txt linked inside it
@@ -832,7 +821,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn override_existing_file_test() {
         let setup = StowSetup::new("override_file_test").unwrap();
 
@@ -866,7 +855,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn directory_vs_file_conflict_test() {
         let setup = StowSetup::new("dir_conflict_test").unwrap();
 
@@ -903,7 +892,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn ignored_is_not_overridden_test() {
         let setup = StowSetup::new("ignore_override_test").unwrap();
 
@@ -933,7 +922,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn target_missing_error_test() {
         let setup = StowSetup::new("target_missing_test").unwrap();
         let target_path = setup.setup_path.join("non-existent-target");
@@ -963,7 +952,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn stow_dir_missing_error_test() {
         let setup = StowSetup::new("stow_dir_missing_test").unwrap();
         let stow_dir = setup.directory.join("non-existent-stow-dir");
@@ -988,7 +977,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn target_is_file_error_test() {
         let setup = StowSetup::new("target_is_file_test").unwrap();
         let target_path = setup.setup_path.join("target-file");
@@ -1015,7 +1004,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn missing_target_build_error_test() {
         let result = CommandBuilder::<CommandOperationImpl>::new()
             .with_packages(vec![PathBuf::from("/some/dir")])
@@ -1031,7 +1020,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[rstest]
     fn missing_stow_dir_build_error_test() {
         let result = CommandBuilder::<CommandOperationImpl>::new()
             .with_target(PathBuf::from("/some/target"))
@@ -1046,7 +1035,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[rstest]
     fn idempotent_stow_test() {
         let setup = StowSetup::new("idempotent_test").unwrap();
         let expected_files = [setup.setup_path.join("file1.txt")];
@@ -1075,12 +1064,12 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn restow_test() {
         let setup = StowSetup::new("restow_test").unwrap();
 
         let target_file = setup.setup_path.join("file.txt");
-        let command_provider = || -> Command<DirectoryReader, CommandOperationImpl> {
+        let command_provider = || -> Command<CommandOperationImpl> {
             let command = setup
                 .default_builder()
                 .restow()
@@ -1107,7 +1096,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn basic_unstow_test() {
         let setup = StowSetup::new_with_data("basic_unstow_test", "basic_stow_test").unwrap();
 
@@ -1137,7 +1126,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn unstow_with_folding_disabled_test() {
         let setup = StowSetup::new_with_data("unstow_with_folding_disabled_test", "no_folding_test").unwrap();
 
@@ -1172,7 +1161,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn unstow_dotfiles_test() {
         let setup = StowSetup::new_with_data("unstow_dotfiles_test", "dotfiles_test").unwrap();
 
@@ -1211,7 +1200,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn unstow_nested_directories_test() {
         let setup = StowSetup::new_with_data("unstow_nested_directories_test", "basic_stow_test").unwrap();
 
@@ -1250,7 +1239,7 @@ mod tests {
         drop(setup);
     }
 
-    #[test]
+    #[rstest]
     fn short_basic_stow_test() {
         let setup = StowSetup::new("short_basic_stow_test").unwrap();
         let expected_files = [

@@ -24,14 +24,16 @@ use std::str::FromStr;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(i64)]
 pub enum ConfigFileVersion {
-    #[default]
     V1 = 1,
+    #[default]
+    V2 = 2,
 }
 
 impl Display for ConfigFileVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::V1 => write!(f, "v1"),
+            Self::V2 => write!(f, "v2"),
         }
     }
 }
@@ -42,6 +44,7 @@ impl TryFrom<i64> for ConfigFileVersion {
     fn try_from(value: i64) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(Self::V1),
+            2 => Ok(Self::V2),
             _ => Err(VersionError::UnsupportedVersion { version: value }),
         }
     }
@@ -53,6 +56,7 @@ impl FromStr for ConfigFileVersion {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "1" | "v1" | "V1" => Ok(Self::V1),
+            "2" | "v2" | "V2" => Ok(Self::V2),
             _ => Err(VersionError::UnsupportedVersionString {
                 version: s.to_string(),
             }),
@@ -74,7 +78,7 @@ impl<'de> Deserialize<'de> for ConfigFileVersion {
             type Value = ConfigFileVersion;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("1 or v1 or V1")
+                formatter.write_str("1 or v1 or V1 or 2 or v2 or V2")
             }
 
             fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
@@ -95,28 +99,23 @@ impl<'de> Deserialize<'de> for ConfigFileVersion {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
+    use rstest::rstest;
 
-    #[test]
-    fn config_file_version_from_str_v1() {
-        let config_file_version = ConfigFileVersion::from_str("1").unwrap();
-        assert_eq!(config_file_version, ConfigFileVersion::V1);
+    #[rstest]
+    #[case("1", ConfigFileVersion::V1)]
+    #[case("v1", ConfigFileVersion::V1)]
+    #[case("V1", ConfigFileVersion::V1)]
+    #[case("2", ConfigFileVersion::V2)]
+    #[case("v2", ConfigFileVersion::V2)]
+    #[case("V2", ConfigFileVersion::V2)]
+    fn config_file_version_from_str(#[case] version: &str, #[case] expected_version: ConfigFileVersion) {
+        let config_file_version = ConfigFileVersion::from_str(version).unwrap();
+        assert_eq!(config_file_version, expected_version);
     }
 
-    #[test]
-    fn config_file_version_from_str_v1_lowercase() {
-        let config_file_version = ConfigFileVersion::from_str("v1").unwrap();
-        assert_eq!(config_file_version, ConfigFileVersion::V1);
-    }
-
-    #[test]
-    fn config_file_version_from_str_v1_uppercase() {
-        let config_file_version = ConfigFileVersion::from_str("V1").unwrap();
-        assert_eq!(config_file_version, ConfigFileVersion::V1);
-    }
-
-    #[test]
+    #[rstest]
     fn config_file_version_from_str_invalid() {
         let result = ConfigFileVersion::from_str("invalid");
         match result {
@@ -125,13 +124,15 @@ mod test {
         }
     }
 
-    #[test]
-    fn config_file_version_from_i64_v1() {
-        let config_file_version = ConfigFileVersion::try_from(1).unwrap();
-        assert_eq!(config_file_version, ConfigFileVersion::V1);
+    #[rstest]
+    #[case(1, ConfigFileVersion::V1)]
+    #[case(2, ConfigFileVersion::V2)]
+    fn config_file_version_from_i64(#[case] version: i64, #[case] expected_version: ConfigFileVersion) {
+        let config_file_version = ConfigFileVersion::try_from(version).unwrap();
+        assert_eq!(config_file_version, expected_version);
     }
 
-    #[test]
+    #[rstest]
     fn config_file_version_from_i64_invalid() {
         let result = ConfigFileVersion::try_from(-1);
         match result {

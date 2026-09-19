@@ -297,134 +297,99 @@ pub struct StowConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
-    #[test]
-    fn linking_strategy_from_str_short() {
-        let strategy = <LinkingStrategy as FromStr>::from_str("short");
+    #[rstest]
+    #[case("short", LinkingStrategy::Short)]
+    #[case("full", LinkingStrategy::Full)]
+    fn linking_strategy_from_str(#[case] linking: &str, #[case] expected_linking: LinkingStrategy) {
+        let strategy = <LinkingStrategy as FromStr>::from_str(linking);
         assert!(strategy.is_ok());
         let strategy = strategy.unwrap();
-        assert_eq!(strategy, LinkingStrategy::Short);
+        assert_eq!(strategy, expected_linking);
     }
 
-    #[test]
-    fn linking_strategy_from_str_full() {
-        let strategy = <LinkingStrategy as FromStr>::from_str("full");
-        assert!(strategy.is_ok());
-        let strategy = strategy.unwrap();
-        assert_eq!(strategy, LinkingStrategy::Full);
-    }
-
-    #[test]
+    #[rstest]
     fn linking_strategy_from_str_invalid() {
         let invalid = <LinkingStrategy as FromStr>::from_str("invalid");
         assert!(invalid.is_err());
     }
 
-    #[test]
-    fn linking_strategy_from_i64_short() {
-        let strategy = LinkingStrategy::try_from(0);
+    #[rstest]
+    #[case(0, LinkingStrategy::Short)]
+    #[case(1, LinkingStrategy::Full)]
+    fn linking_strategy_from_i64(#[case] linking: i64, #[case] expected_linking: LinkingStrategy) {
+        let strategy = LinkingStrategy::try_from(linking);
         assert!(strategy.is_ok());
         let strategy = strategy.unwrap();
-        assert_eq!(strategy, LinkingStrategy::Short);
+        assert_eq!(strategy, expected_linking);
     }
 
-    #[test]
-    fn linking_strategy_from_i64_full() {
-        let strategy = LinkingStrategy::try_from(1);
-        assert!(strategy.is_ok());
-        let strategy = strategy.unwrap();
-        assert_eq!(strategy, LinkingStrategy::Full);
-    }
-
-    #[test]
+    #[rstest]
     fn linking_strategy_from_i64_invalid() {
         let invalid = LinkingStrategy::try_from(-1);
         assert!(invalid.is_err());
     }
 
-    #[test]
-    fn regex_strategy_from_str_rust() {
-        let strategy = <RegexStrategy as FromStr>::from_str("rust");
+    #[rstest]
+    #[case("rust", RegexStrategy::Rust)]
+    #[case("pcre2", RegexStrategy::Pcre2)]
+    fn regex_strategy_from_str_rust(#[case] regex: &str, #[case] expected_regex: RegexStrategy) {
+        let strategy = <RegexStrategy as FromStr>::from_str(regex);
         assert!(strategy.is_ok());
         let strategy = strategy.unwrap();
-        assert_eq!(strategy, RegexStrategy::Rust);
+        assert_eq!(strategy, expected_regex);
     }
 
-    #[test]
-    fn regex_strategy_from_str_prce2() {
-        let strategy = <RegexStrategy as FromStr>::from_str("pcre2");
-        assert!(strategy.is_ok());
-        let strategy = strategy.unwrap();
-        assert_eq!(strategy, RegexStrategy::Pcre2);
-    }
-
-    #[test]
+    #[rstest]
     fn regex_strategy_from_str_invalid() {
         let invalid = <RegexStrategy as FromStr>::from_str("invalid");
         assert!(invalid.is_err());
     }
 
-    #[test]
-    fn regex_strategy_from_i64_rust() {
-        let strategy = RegexStrategy::try_from(0);
+    #[rstest]
+    #[case(0, RegexStrategy::Rust)]
+    #[case(1, RegexStrategy::Pcre2)]
+    fn regex_strategy_from_i64_rust(#[case] regex: i64, #[case] expected_regex: RegexStrategy) {
+        let strategy = RegexStrategy::try_from(regex);
         assert!(strategy.is_ok());
         let strategy = strategy.unwrap();
-        assert_eq!(strategy, RegexStrategy::Rust);
+        assert_eq!(strategy, expected_regex);
     }
 
-    #[test]
-    fn regex_strategy_from_i64_pcre2() {
-        let strategy = RegexStrategy::try_from(1);
-        assert!(strategy.is_ok());
-        let strategy = strategy.unwrap();
-        assert_eq!(strategy, RegexStrategy::Pcre2);
-    }
-
-    #[test]
+    #[rstest]
     fn regex_strategy_from_i64_invalid() {
         let invalid = RegexStrategy::try_from(-1);
         assert!(invalid.is_err());
     }
 
-    #[test]
-    fn matching_strategy_from_str_individual() {
-        let strategy = <MatchingStrategy as FromStr>::from_str("individual");
+    #[rstest]
+    #[case("individual", MatchingStrategy::Individual)]
+    #[case("combined", MatchingStrategy::Combined)]
+    fn matching_strategy_from_str(#[case] matching: &str, #[case] expected_matching: MatchingStrategy) {
+        let strategy = <MatchingStrategy as FromStr>::from_str(matching);
         assert!(strategy.is_ok());
         let strategy = strategy.unwrap();
-        assert_eq!(strategy, MatchingStrategy::Individual);
+        assert_eq!(strategy, expected_matching);
     }
 
-    #[test]
-    fn matching_strategy_from_str_combined() {
-        let strategy = <MatchingStrategy as FromStr>::from_str("combined");
-        assert!(strategy.is_ok());
-        let strategy = strategy.unwrap();
-        assert_eq!(strategy, MatchingStrategy::Combined);
-    }
-
-    #[test]
+    #[rstest]
     fn matching_strategy_from_str_invalid() {
         let invalid = <MatchingStrategy as FromStr>::from_str("invalid");
         assert!(invalid.is_err());
     }
 
-    #[test]
-    fn matching_strategy_from_i64_individual() {
-        let strategy = MatchingStrategy::try_from(0);
+    #[rstest]
+    #[case(0, MatchingStrategy::Individual)]
+    #[case(1, MatchingStrategy::Combined)]
+    fn matching_strategy_from_i64(#[case] matching: i64, #[case] expected_matching: MatchingStrategy) {
+        let strategy = MatchingStrategy::try_from(matching);
         assert!(strategy.is_ok());
         let strategy = strategy.unwrap();
-        assert_eq!(strategy, MatchingStrategy::Individual);
+        assert_eq!(strategy, expected_matching);
     }
 
-    #[test]
-    fn matching_strategy_from_i64_combined() {
-        let strategy = MatchingStrategy::try_from(1);
-        assert!(strategy.is_ok());
-        let strategy = strategy.unwrap();
-        assert_eq!(strategy, MatchingStrategy::Combined);
-    }
-
-    #[test]
+    #[rstest]
     fn matching_strategy_from_i64_invalid() {
         let invalid = MatchingStrategy::try_from(-1);
         assert!(invalid.is_err());
