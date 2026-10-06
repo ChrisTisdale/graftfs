@@ -19,6 +19,7 @@ exclude = [
     "/.vscode/",
     "/.idea/",
     "src/lib.rs",
+    "src/CLAUDE.md",
     "src/AGENTS.md",
     "src/docs/",
     "/docs/",
