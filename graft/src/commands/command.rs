@@ -16,11 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::commands::color_support::ColorPrinter;
 use crate::commands::command_error::InvalidPathSnafu;
 use crate::commands::stow_data::StowFilter;
 use crate::commands::{CommandError, CommandOperation, ListData, RestowData, StowData, UnstowData};
-use crate::config::LinkingStrategy;
 use crate::config::path_resolver::path_relative_from;
+use crate::config::{ConflictStrategy, LinkingStrategy};
 use grep::matcher::Matcher;
 use snafu::ResultExt;
 use std::ffi::{OsStr, OsString};
@@ -407,6 +408,12 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
+        trace!(
+            "Handling existing item: {} with existing file: {}",
+            item.display(),
+            full_path.display()
+        );
+
         let item = item.canonicalize().with_context(|_| InvalidPathSnafu {
             path: item.display().to_string(),
         })?;
@@ -421,25 +428,83 @@ impl<TCommand: CommandOperation> Command<TCommand> {
             );
 
             Self::process_directory_entry(&item, full_path, package, operation)?;
-
             Ok(())
-        } else if Self::should_override(full_path, &package.data.options.filter) && operation.is_file(full_path) {
+        } else if Self::should_override(full_path, &package.data.options.filter) && operation.is_symlink(full_path) {
             info!("Overriding existing file: {}", full_path.display());
             operation.remove_item(full_path)?;
             operation.link_item(&item, full_path)?;
 
             Ok(())
         } else {
-            warn!("File already exists: {}", full_path.display());
-
-            Err(CommandError::DirectoryEntryAlreadyExists {
-                directory: item
-                    .file_name()
-                    .unwrap_or_else(|| OsStr::new("Unknown Name"))
-                    .display()
-                    .to_string(),
-            })
+            Self::handle_conflict(&item, package, full_path, operation)
         }
+    }
+
+    fn handle_conflict(
+        item: &Path,
+        package: &StowPackage<StowData>,
+        full_path: &Path,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
+        trace!(
+            "Handling conflict for item: {} with existing file: {}",
+            item.display(),
+            full_path.display()
+        );
+
+        match package.data.options.conflict_strategy {
+            ConflictStrategy::Stop => {
+                error!("File already exists: {}", full_path.display());
+                Err(CommandError::DirectoryEntryAlreadyExists {
+                    directory: item
+                        .file_name()
+                        .unwrap_or_else(|| OsStr::new("Unknown Name"))
+                        .display()
+                        .to_string(),
+                })
+            }
+            ConflictStrategy::Skip => {
+                warn!(
+                    "File already exists: {}.  Skipping handling this file",
+                    full_path.display()
+                );
+                Ok(())
+            }
+            ConflictStrategy::Adopt => Self::handle_adopt(item, full_path, operation),
+            ConflictStrategy::Replace => Self::handle_replace(item, full_path, operation),
+        }
+    }
+
+    fn handle_replace(item: &Path, full_path: &Path, operation: &mut TCommand) -> Result<(), CommandError> {
+        info!(
+            "Replacing existing file: {} with {}",
+            full_path.display(),
+            item.display()
+        );
+
+        operation.remove_item(full_path)?;
+        operation.link_item(item, full_path)?;
+        Ok(())
+    }
+
+    fn handle_adopt(item: &Path, full_path: &Path, operation: &mut TCommand) -> Result<(), CommandError> {
+        if operation.is_symlink(full_path) {
+            warn!("Cannot adopt symlink: {}", full_path.display());
+            return Err(CommandError::UnableToMoveItem {
+                item: item.display().to_string(),
+            });
+        }
+
+        info!(
+            "Adopting existing file: {} into {}",
+            full_path.display(),
+            item.display()
+        );
+
+        operation.remove_item(item)?;
+        operation.move_item(full_path, item)?;
+        operation.link_item(item, full_path)?;
+        Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]

@@ -21,6 +21,7 @@ mod app_directories;
 mod color_config;
 mod config_error;
 mod config_file_version;
+mod conflict_strategy_error;
 mod console_logging_stream_error;
 mod format_error;
 mod ignored;
@@ -46,6 +47,7 @@ pub use app_directories::AppDirectories;
 pub use color_config::{ColorConfig, ColorSettings};
 pub use config_error::ConfigError;
 pub use config_file_version::ConfigFileVersion;
+pub use conflict_strategy_error::ConflictStrategyError;
 pub use ignored::Ignored;
 pub use level_error::LevelError;
 pub use linking_strategy_error::LinkingStrategyError;
@@ -61,7 +63,7 @@ use std::fmt::Display;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
-pub use stow_config::{LinkingStrategy, MatchingStrategy, RegexStrategy, StowConfig};
+pub use stow_config::{ConflictStrategy, LinkingStrategy, MatchingStrategy, RegexStrategy, StowConfig};
 use toml::de::DeTable;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -465,12 +467,12 @@ impl Config {
 mod tests {
     use super::*;
     use crate::config::color_config::{
-        CreateConfig, LinkConfig, ListConfig, RemoveConfig, SerializeColorSettings, SerializeCreateConfig,
-        SerializeLinkConfig, SerializeListConfig, SerializeRemoveConfig, SerializeSimulationConfig,
-        SerializeUnlinkConfig, SimulationConfig, UnlinkConfig, V1SerializeColorSettings,
+        CreateConfig, LinkConfig, ListConfig, MoveConfig, RemoveConfig, SerializeColorSettings, SerializeCreateConfig,
+        SerializeLinkConfig, SerializeListConfig, SerializeMoveConfig, SerializeRemoveConfig,
+        SerializeSimulationConfig, SerializeUnlinkConfig, SimulationConfig, UnlinkConfig, V1SerializeColorSettings,
     };
     use crate::config::logging_config::{ConsoleLoggingStream, LoggingLevel, RotationType};
-    use crate::config::stow_config::MatchingStrategy;
+    use crate::config::stow_config::{ConflictStrategy, MatchingStrategy};
     use crossterm::style::Color;
     use rstest::rstest;
     use std::path::PathBuf;
@@ -514,6 +516,13 @@ mod tests {
         create: SerializeCreateConfig {
             create: Some(Color::Yellow),
             colon: Some(Color::White),
+            target: Some(Color::Grey),
+        },
+        move_color: SerializeMoveConfig {
+            move_item: Some(Color::White),
+            colon: Some(Color::White),
+            source: Some(Color::Black),
+            arrow: Some(Color::Cyan),
             target: Some(Color::Grey),
         },
         simulation: SerializeSimulationConfig {
@@ -574,6 +583,7 @@ mod tests {
         linking_strategy = "short"
         regex_strategy = "rust"
         matching_strategy = "individual"
+        conflict_strategy = "stop"
         printing_enabled = false
         "#;
 
@@ -606,6 +616,7 @@ mod tests {
             linking_strategy: LinkingStrategy::Short,
             regex_strategy: RegexStrategy::Rust,
             matching_strategy: MatchingStrategy::Individual,
+            conflict_strategy: ConflictStrategy::Stop,
             printing_enabled: false,
         };
 
@@ -667,6 +678,13 @@ mod tests {
         target = "grey"
         colon = "white"
 
+        [color.move]
+        move = "white"
+        colon = "white"
+        source = "black"
+        arrow = "cyan"
+        target = "grey"
+
         [color.simulation]
         note = "dark_green"
         colon = "white"
@@ -676,6 +694,7 @@ mod tests {
         linking_strategy = "short"
         regex_strategy = "rust"
         matching_strategy = "individual"
+        conflict_strategy = "stop"
         printing_enabled = false
         "#;
 
@@ -708,6 +727,7 @@ mod tests {
             linking_strategy: LinkingStrategy::Short,
             regex_strategy: RegexStrategy::Rust,
             matching_strategy: MatchingStrategy::Individual,
+            conflict_strategy: ConflictStrategy::Stop,
             printing_enabled: false,
         };
 
@@ -1126,6 +1146,13 @@ mod tests {
         target = "Grey"
         colon = "White"
 
+        [color.move]
+        move = "White"
+        colon = "White"
+        source = "Black"
+        arrow = "Cyan"
+        target = "Grey"
+
         [color.simulation]
         note = "Dark_Green"
         colon = "White"
@@ -1248,6 +1275,7 @@ mod tests {
             list: ListConfig::default(),
             remove: RemoveConfig::default(),
             create: CreateConfig::default(),
+            move_color: MoveConfig::default(),
             simulation: SimulationConfig::default(),
         };
 
@@ -1412,5 +1440,75 @@ mod tests {
 
         let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
         assert_eq!(config.stow.matching_strategy, strategy);
+    }
+
+    #[rstest]
+    #[case(ConfigFileVersion::V1, "stop", ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V1, "Stop", ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V1, "STOP", ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V1, "skip", ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V1, "Skip", ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V1, "SKIP", ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V1, "adopt", ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V1, "Adopt", ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V1, "ADOPT", ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V1, "replace", ConflictStrategy::Replace)]
+    #[case(ConfigFileVersion::V1, "Replace", ConflictStrategy::Replace)]
+    #[case(ConfigFileVersion::V1, "REPLACE", ConflictStrategy::Replace)]
+    #[case(ConfigFileVersion::V2, "stop", ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V2, "Stop", ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V2, "STOP", ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V2, "skip", ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V2, "Skip", ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V2, "SKIP", ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V2, "adopt", ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V2, "Adopt", ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V2, "ADOPT", ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V2, "replace", ConflictStrategy::Replace)]
+    #[case(ConfigFileVersion::V2, "Replace", ConflictStrategy::Replace)]
+    #[case(ConfigFileVersion::V2, "REPLACE", ConflictStrategy::Replace)]
+    fn toml_ignores_conflicting_strategy_case(
+        #[case] version: ConfigFileVersion,
+        #[case] strategy: &str,
+        #[case] expected_strategy: ConflictStrategy,
+    ) {
+        let config_content = format!(
+            r#"
+            version = "{version}"
+
+            [stow]
+            conflict_strategy = "{strategy}"
+            "#
+        );
+
+        let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+        assert_eq!(config.stow.conflict_strategy, expected_strategy);
+    }
+
+    #[rstest]
+    #[case(ConfigFileVersion::V1, ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V1, ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V1, ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V1, ConflictStrategy::Replace)]
+    #[case(ConfigFileVersion::V2, ConflictStrategy::Stop)]
+    #[case(ConfigFileVersion::V2, ConflictStrategy::Skip)]
+    #[case(ConfigFileVersion::V2, ConflictStrategy::Adopt)]
+    #[case(ConfigFileVersion::V2, ConflictStrategy::Replace)]
+    fn toml_conflicting_strategy_can_use_numeric_value(
+        #[case] version: ConfigFileVersion,
+        #[case] strategy: ConflictStrategy,
+    ) {
+        let config_content = format!(
+            r#"
+            version = "{version}"
+
+            [stow]
+            conflict_strategy = {}
+            "#,
+            strategy as i64
+        );
+
+        let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+        assert_eq!(config.stow.conflict_strategy, strategy);
     }
 }

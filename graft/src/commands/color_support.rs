@@ -37,8 +37,62 @@ impl Display for ColorSupport {
     }
 }
 
-impl ColorSupport {
-    pub fn print_link_text(&self, item: &Path, target: &Path) {
+pub trait ColorPrinter {
+    fn print_link_text(&self, item: &Path, target: &Path);
+    fn print_unlink_text(&self, item: &Path);
+    fn print_list_text(&self, item: &Path, target: &Path);
+    fn print_remove_text(&self, item: &Path);
+    fn print_create_text(&self, item: &Path);
+    fn print_move_text(&self, source: &Path, target: &Path);
+    fn print_simulation_text(&self);
+}
+
+impl<T: ColorPrinter> ColorPrinter for Option<Box<T>> {
+    fn print_link_text(&self, item: &Path, target: &Path) {
+        if let Some(support) = self {
+            support.print_link_text(item, target);
+        }
+    }
+
+    fn print_unlink_text(&self, item: &Path) {
+        if let Some(support) = self {
+            support.print_unlink_text(item);
+        }
+    }
+
+    fn print_list_text(&self, item: &Path, target: &Path) {
+        if let Some(support) = self {
+            support.print_list_text(item, target);
+        }
+    }
+
+    fn print_remove_text(&self, item: &Path) {
+        if let Some(support) = self {
+            support.print_remove_text(item);
+        }
+    }
+
+    fn print_create_text(&self, item: &Path) {
+        if let Some(support) = self {
+            support.print_create_text(item);
+        }
+    }
+
+    fn print_move_text(&self, source: &Path, target: &Path) {
+        if let Some(support) = self {
+            support.print_move_text(source, target);
+        }
+    }
+
+    fn print_simulation_text(&self) {
+        if let Some(support) = self {
+            support.print_simulation_text();
+        }
+    }
+}
+
+impl ColorPrinter for ColorSupport {
+    fn print_link_text(&self, item: &Path, target: &Path) {
         match self {
             Self::None => println!("LINK: {} => {}", item.display(), target.display()),
             Self::Colored(config) => println!(
@@ -52,7 +106,7 @@ impl ColorSupport {
         }
     }
 
-    pub fn print_unlink_text(&self, item: &Path) {
+    fn print_unlink_text(&self, item: &Path) {
         match self {
             Self::None => println!("UNLINK: {}", item.display()),
             Self::Colored(config) => println!(
@@ -64,7 +118,7 @@ impl ColorSupport {
         }
     }
 
-    pub fn print_list_text(&self, item: &Path, target: &Path) {
+    fn print_list_text(&self, item: &Path, target: &Path) {
         match self {
             Self::None => println!("LINK: {} => {}", item.display(), target.display()),
             Self::Colored(config) => println!(
@@ -78,7 +132,7 @@ impl ColorSupport {
         }
     }
 
-    pub fn print_remove_text(&self, item: &Path) {
+    fn print_remove_text(&self, item: &Path) {
         match self {
             Self::None => println!("RM: {}", item.display()),
             Self::Colored(config) => println!(
@@ -90,7 +144,7 @@ impl ColorSupport {
         }
     }
 
-    pub fn print_create_text(&self, item: &Path) {
+    fn print_create_text(&self, item: &Path) {
         match self {
             Self::None => println!("MKDIR: {}", item.display()),
             Self::Colored(config) => println!(
@@ -102,7 +156,21 @@ impl ColorSupport {
         }
     }
 
-    pub fn print_simulation_text(&self) {
+    fn print_move_text(&self, source: &Path, target: &Path) {
+        match self {
+            Self::None => println!("MV: {} => {}", source.display(), target.display()),
+            Self::Colored(config) => println!(
+                "{}{} {} {} {}",
+                style("MV").with(config.move_color.move_item),
+                style(":").with(config.move_color.colon),
+                style(source.display()).with(config.move_color.target),
+                style("=>").with(config.move_color.colon),
+                style(target.display()).with(config.move_color.target),
+            ),
+        }
+    }
+
+    fn print_simulation_text(&self) {
         match self {
             Self::None => println!("\nNote: Running in simulation mode.  The file system isn't being modified"),
             Self::Colored(config) => println!(

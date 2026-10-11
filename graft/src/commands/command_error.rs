@@ -74,4 +74,12 @@ pub enum CommandError {
         path: String,
         source: std::io::Error,
     },
+    #[snafu(display("Failed to rename {from} to {to}"))]
+    RenameItemError {
+        from: String,
+        to: String,
+        source: std::io::Error,
+    },
+    #[snafu(display("Unable to move item: {item}"))]
+    UnableToMoveItem { item: String },
 }

@@ -17,12 +17,108 @@
  */
 
 use crate::config::matching_strategy_error::MatchingStrategyError;
-use crate::config::{LinkingStrategyError, RegexStrategyError};
+use crate::config::{ConflictStrategyError, LinkingStrategyError, RegexStrategyError};
 use clap::ValueEnum;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::fmt::Display;
 use std::str::FromStr;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
+#[repr(i64)]
+pub enum ConflictStrategy {
+    #[default]
+    Stop,
+    Skip,
+    Adopt,
+    Replace,
+}
+
+impl FromStr for ConflictStrategy {
+    type Err = ConflictStrategyError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            s if s.eq_ignore_ascii_case("stop") => Ok(Self::Stop),
+            s if s.eq_ignore_ascii_case("skip") => Ok(Self::Skip),
+            s if s.eq_ignore_ascii_case("adopt") => Ok(Self::Adopt),
+            s if s.eq_ignore_ascii_case("replace") => Ok(Self::Replace),
+            _ => Err(ConflictStrategyError::InvalidConflictStrategyString {
+                strategy: s.to_string(),
+            }),
+        }
+    }
+}
+
+impl TryFrom<i64> for ConflictStrategy {
+    type Error = ConflictStrategyError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Stop),
+            1 => Ok(Self::Skip),
+            2 => Ok(Self::Adopt),
+            3 => Ok(Self::Replace),
+            _ => Err(ConflictStrategyError::InvalidConflictStrategy { strategy: value }),
+        }
+    }
+}
+
+impl Serialize for ConflictStrategy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Self::Stop => "stop",
+            Self::Skip => "skip",
+            Self::Adopt => "adopt",
+            Self::Replace => "replace",
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ConflictStrategy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ConflictStrategyVisitor;
+
+        impl Visitor<'_> for ConflictStrategyVisitor {
+            type Value = ConflictStrategy;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("stop or skip or adopt or replace")
+            }
+
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                v.try_into().map_err(de::Error::custom)
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                v.parse().map_err(de::Error::custom)
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                self.visit_str(&v)
+            }
+        }
+
+        deserializer.deserialize_any(ConflictStrategyVisitor)
+    }
+}
+
+impl Display for ConflictStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stop => write!(f, "stop"),
+            Self::Skip => write!(f, "skip"),
+            Self::Adopt => write!(f, "adopt"),
+            Self::Replace => write!(f, "replace"),
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
@@ -291,6 +387,8 @@ pub struct StowConfig {
     #[serde(default)]
     pub matching_strategy: MatchingStrategy,
     #[serde(default)]
+    pub conflict_strategy: ConflictStrategy,
+    #[serde(default)]
     pub printing_enabled: bool,
 }
 
@@ -392,6 +490,42 @@ mod tests {
     #[rstest]
     fn matching_strategy_from_i64_invalid() {
         let invalid = MatchingStrategy::try_from(-1);
+        assert!(invalid.is_err());
+    }
+
+    #[rstest]
+    #[case("stop", ConflictStrategy::Stop)]
+    #[case("skip", ConflictStrategy::Skip)]
+    #[case("adopt", ConflictStrategy::Adopt)]
+    #[case("replace", ConflictStrategy::Replace)]
+    fn conflicting_strategy_from_str(#[case] conflict: &str, #[case] expected_conflict: ConflictStrategy) {
+        let strategy = <ConflictStrategy as FromStr>::from_str(conflict);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, expected_conflict);
+    }
+
+    #[rstest]
+    fn conflicting_strategy_from_str_invalid() {
+        let invalid = <ConflictStrategy as FromStr>::from_str("invalid");
+        assert!(invalid.is_err());
+    }
+
+    #[rstest]
+    #[case(0, ConflictStrategy::Stop)]
+    #[case(1, ConflictStrategy::Skip)]
+    #[case(2, ConflictStrategy::Adopt)]
+    #[case(3, ConflictStrategy::Replace)]
+    fn conflicting_strategy_from_i64(#[case] conflict: i64, #[case] expected_conflict: ConflictStrategy) {
+        let strategy = ConflictStrategy::try_from(conflict);
+        assert!(strategy.is_ok());
+        let strategy = strategy.unwrap();
+        assert_eq!(strategy, expected_conflict);
+    }
+
+    #[rstest]
+    fn conflicting_strategy_from_i64_invalid() {
+        let invalid = ConflictStrategy::try_from(-1);
         assert!(invalid.is_err());
     }
 }

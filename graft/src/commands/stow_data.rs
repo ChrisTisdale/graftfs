@@ -17,7 +17,7 @@
  */
 
 use crate::commands::regex_matcher::RegexMatcher;
-use crate::config::{LinkingStrategy, MatchingStrategy, RegexStrategy};
+use crate::config::{ConflictStrategy, LinkingStrategy, MatchingStrategy, RegexStrategy};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use tracing::{Level, debug, enabled, trace};
@@ -42,6 +42,7 @@ pub struct StowOptions {
     pub(crate) filter: StowFilter,
     pub(crate) dot_file_prefix: Option<String>,
     pub(crate) linking_strategy: LinkingStrategy,
+    pub(crate) conflict_strategy: ConflictStrategy,
     pub(crate) no_folding: bool,
 }
 
@@ -57,6 +58,7 @@ pub struct StowStrategies {
     pub linking: LinkingStrategy,
     pub regex: RegexStrategy,
     pub matching: MatchingStrategy,
+    pub conflict: ConflictStrategy,
 }
 
 impl StowStrategies {
@@ -121,8 +123,9 @@ impl StowOptions {
 
         Self {
             no_folding,
-            linking_strategy: strategies.linking,
             dot_file_prefix,
+            linking_strategy: strategies.linking,
+            conflict_strategy: strategies.conflict,
             filter: StowFilter { ignored, overrides },
         }
     }

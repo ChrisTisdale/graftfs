@@ -25,8 +25,8 @@ use crate::cli_errors::{
 };
 use crate::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
 use crate::config::{
-    AppConfiguration, Config, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy, LoggingFormat, LoggingLevel,
-    MatchingStrategy, RegexStrategy, path_resolver,
+    AppConfiguration, Config, ConflictStrategy, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy,
+    LoggingFormat, LoggingLevel, MatchingStrategy, RegexStrategy, path_resolver,
 };
 use crate::executor::Executor;
 use crate::shell::Shell;
@@ -154,7 +154,7 @@ struct StowArgs {
     #[arg(
         short = 'o',
         long = "override",
-        help = "Specify a file path or a regular expression pattern for files or directories that should be forcefully stowed, even if they would otherwise be ignored or causing conflicts.",
+        help = "Specify a file path or a regular expression pattern for files or directories that should be forcefully stowed, even if they are apart of an existing package.",
         value_name = "PATTERN"
     )]
     overrides: Vec<String>,
@@ -196,6 +196,13 @@ struct StowArgs {
         value_name = "STRATEGY"
     )]
     matching_strategy: Option<MatchingStrategy>,
+    #[arg(
+        long = "conflict-strategy",
+        ignore_case = true,
+        help = "Specify the conflict strategy for stowing files.",
+        value_name = "STRATEGY"
+    )]
+    conflict_strategy: Option<ConflictStrategy>,
     #[arg(
         long = "print",
         help = "Enable printing_enable operations performed by the application.  This is only applicable when the operation is not a dry run.",
@@ -600,19 +607,13 @@ impl CommandLineProcessor {
         ignored: HashSet<String>,
         overrides: HashSet<String>,
     ) -> Result<AppConfiguration, CliError> {
-        let config_file = match &global.config_file {
-            Some(c) => Self::resolve_config_file(c)?,
-            None => directory.join(DEFAULT_CONFIG_FILE),
-        };
-
-        let config_file_path = if fs::exists(&config_file).unwrap_or(false) {
-            Some(config_file.as_path())
-        } else {
-            None
-        };
+        let config_file_path = global.config_file.as_deref().map_or_else(
+            || Self::get_local_config_file(directory),
+            |p| Self::resolve_config_file(p).map(Some),
+        )?;
 
         let app_config = AppConfiguration::load_configuration(
-            config_file_path,
+            config_file_path.as_deref(),
             directory,
             ignored,
             overrides,
@@ -626,6 +627,15 @@ impl CommandLineProcessor {
         })?;
 
         Ok(app_config)
+    }
+
+    fn get_local_config_file(directory: &Path) -> Result<Option<PathBuf>, CliError> {
+        let path = directory.join(DEFAULT_CONFIG_FILE);
+        let exists = fs::exists(&path).with_context(|_| InvalidPathSnafu {
+            path: path.display().to_string(),
+        })?;
+
+        if exists { Ok(Some(path)) } else { Ok(None) }
     }
 
     fn create_command(
@@ -738,6 +748,10 @@ impl CommandLineProcessor {
             .matching_strategy
             .unwrap_or_else(|| app_config.matching_strategy());
 
+        let conflict_strategy = stow_args
+            .conflict_strategy
+            .unwrap_or_else(|| app_config.conflict_strategy());
+
         let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, printing, &app_config)
@@ -751,6 +765,7 @@ impl CommandLineProcessor {
             .with_linking_strategy(linking_strategy)
             .with_regex_strategy(regex_strategy)
             .with_matching_strategy(matching_strategy)
+            .with_conflict_strategy(conflict_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Stow" })?;
 
@@ -820,6 +835,10 @@ impl CommandLineProcessor {
             .matching_strategy
             .unwrap_or_else(|| app_config.matching_strategy());
 
+        let conflict_strategy = stow_args
+            .conflict_strategy
+            .unwrap_or_else(|| app_config.conflict_strategy());
+
         let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
         let command = Self::create_command(stow_args.simulate, printing, &app_config)
@@ -833,6 +852,7 @@ impl CommandLineProcessor {
             .with_linking_strategy(linking_strategy)
             .with_regex_strategy(regex_strategy)
             .with_matching_strategy(matching_strategy)
+            .with_conflict_strategy(conflict_strategy)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "Restow" })?;
 
