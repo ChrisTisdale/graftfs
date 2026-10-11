@@ -30,7 +30,7 @@ use crate::config::{
 };
 use crate::executor::Executor;
 use crate::shell::Shell;
-use clap::builder::Styles;
+use clap::builder::{StyledStr, Styles};
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::Generator;
@@ -41,12 +41,10 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
+use supports_color::Stream;
 
 const APP_NAME: &str = "graft";
 const STYLES: Styles = Styles::styled();
-const MISSING_DIRECTORY_ERROR: &str = r"Either the source directory or package name is required.  Please provide either of the following:
-  --directory <DIRECTORY>
-  --package <PACKAGE>";
 const HELP_TEMPLATE: &str = r"
 {before-help}{name} {version}: {author-with-newline}
 {about-with-newline}
@@ -658,13 +656,25 @@ impl CommandLineProcessor {
         }
     }
 
+    fn create_missing_directory_error() -> clap::Error {
+        use std::fmt::Write as _;
+        let invalid = STYLES.get_invalid();
+        let mut styled = StyledStr::from(
+            "Either the source directory or package name is required.  Please provide either of the following:",
+        );
+        let _ = write!(styled, "\n  {invalid}--directory <DIRECTORY>{invalid:#}");
+        let _ = write!(styled, "\n  {invalid}--package <PACKAGE>{invalid:#}");
+        if supports_color::on(Stream::Stdout).is_some() {
+            Self::command().error(ErrorKind::MissingRequiredArgument, styled.ansi())
+        } else {
+            Self::command().error(ErrorKind::MissingRequiredArgument, styled)
+        }
+    }
+
     fn get_source(directory_args: &DirectoryArgs) -> Result<PathBuf, CliError> {
         if directory_args.packages.is_empty() {
             directory_args.source.as_ref().map_or_else(
-                || {
-                    Err(Self::command().error(ErrorKind::MissingRequiredArgument, MISSING_DIRECTORY_ERROR))
-                        .context(CommandLineParsingSnafu)?
-                },
+                || Err(Self::create_missing_directory_error()).context(CommandLineParsingSnafu)?,
                 |d| {
                     path_resolver::resolve_path(d).with_context(|_| ResolveSnafu {
                         file: d.display().to_string(),
