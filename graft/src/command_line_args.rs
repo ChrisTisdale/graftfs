@@ -204,7 +204,9 @@ struct StowArgs {
     #[arg(
         long = "print",
         help = "Enable printing_enable operations performed by the application.  This is only applicable when the operation is not a dry run.",
-        conflicts_with = "simulate"
+        conflicts_with = "simulate",
+        default_missing_value = "true",
+        num_args = 0..=1
     )]
     printing: Option<bool>,
 }
