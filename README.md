@@ -160,52 +160,183 @@ file = ".graft-ignore"
 comment = '#'
 
 [overrides]
-file = ".graft-override"
+file = ".graft-overrides"
 comment = '#'
 
 [logging]
-level = "Info"
+level = "info"
 stream = "stderr"
 format = "compact"
 logging_path = "path/to/logs"
-rotation = "Daily"
-max_log_files = 30
+file = "graft.log"
+rotation = "daily"
+max_log_files = 5
 color_support = true
 
 [color]
 enabled = true
-link = "Green"
-unlink = "Red"
-list = "Cyan"
-remove = "Red"
-create = "Green"
-arrow = "Blue"
-source = "Yellow"
-target = "Magenta"
-note = "Yellow"
-colon = "Yellow"
-simulation = "Yellow"
+
+[color.link]
+link = "green"
+colon = "white"
+source = "yellow"
+arrow = "blue"
+target = "magenta"
+
+[color.unlink]
+unlink = "red"
+colon = "white"
+target = "magenta"
+
+[color.list]
+link = "cyan"
+colon = "white"
+source = "yellow"
+arrow = "blue"
+target = "magenta"
+
+[color.remove]
+remove = "red"
+colon = "white"
+target = "magenta"
+
+[color.create]
+create = "green"
+colon = "white"
+target = "magenta"
+
+[color.move]
+move = "green"
+colon = "white"
+source = "yellow"
+arrow = "blue"
+target = "magenta"
+
+[color.simulation]
+note = "yellow"
+colon = "yellow"
+text = "yellow"
 
 [stow]
 linking_strategy = "short"
 regex_strategy = "rust"
 matching_strategy = "combined"
-printing_enable = false
+conflict_strategy = "stop"
+printing_enabled = false
 ```
 
-### Version 1 Configuration Options
+### Version 2 Configuration Options
 
-#### Ignored
+- `version`: The configuration format version (default: `2`). Set to `2` for Version 2.
+
+#### Version 2 Ignored
 
 - `file`: The name of the ignored file (default: `.graft-ignore`)
 - `comment`: The comment character used in the ignored file (default: '#')
 
-#### Overrides
+#### Version 2 Overrides
+
+- `file`: The name of the override file (default: `.graft-overrides`)
+- `comment`: The comment character used in the override file (default: '#')
+
+#### Version 2 Logging
+
+- `level`: The logging level (default: 'warn')
+  - Possible values: 'off', 'error', 'warn', 'info', 'debug', 'trace'
+- `stream`: The stream to write to when logging to the console (default: 'stderr')
+  - Possible values: 'stdout', 'stderr'
+- `format`: The log format (default: 'compact')
+  - Possible values: 'compact', 'pretty', 'json'
+- `logging_path`: The path to the log file. When no file is provided, the logging will output to stderr (default: None)
+- `file`: The name of the log file when `logging_path` is configured (default: 'graft.log')
+- `rotation`: The log rotation mode (default: 'daily')
+  - Possible values: 'daily', 'hourly'
+- `max_log_files`: The maximum number of log files to keep (default: 5)
+- `color_support`: Whether to enable color support in logs (default: true)
+
+#### Version 2 Color
+
+- `enabled`: Whether to enable color support in logs (default: true)
+
+Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., '#00FF00').
+
+##### Version 2 Link (`[color.link]`)
+
+- `link`: The color of the link text (default: '#A6DA95').
+- `colon`: The color of the colon text (default: 'reset').
+- `source`: The color of the source text (default: '#EED49F').
+- `arrow`: The color of the arrow text (default: '#8AADF4').
+- `target`: The color of the target text (default: '#F5BDE6').
+
+##### Version 2 Unlink (`[color.unlink]`)
+
+- `unlink`: The color of the unlink text (default: '#ED8796').
+- `colon`: The color of the colon text (default: 'reset').
+- `target`: The color of the target text (default: '#F5BDE6').
+
+##### Version 2 List (`[color.list]`)
+
+- `link`: The color of the list text (default: '#91D7E3').
+- `colon`: The color of the colon text (default: 'reset').
+- `source`: The color of the source text (default: '#EED49F').
+- `arrow`: The color of the arrow text (default: '#8AADF4').
+- `target`: The color of the target text (default: '#F5BDE6').
+
+##### Version 2 Remove (`[color.remove]`)
+
+- `remove`: The color of the remove text (default: '#ED8796').
+- `colon`: The color of the colon text (default: 'reset').
+- `target`: The color of the target text (default: '#F5BDE6').
+
+##### Version 2 Create (`[color.create]`)
+
+- `create`: The color of the create text (default: '#A6DA95').
+- `colon`: The color of the colon text (default: 'reset').
+- `target`: The color of the target text (default: '#F5BDE6').
+
+##### Version 2 Move (`[color.move]`)
+
+- `move`: The color of the move text (default: '#A6DA95').
+- `colon`: The color of the colon text (default: 'reset').
+- `source`: The color of the source text (default: '#EED49F').
+- `arrow`: The color of the arrow text (default: '#8AADF4').
+- `target`: The color of the target text (default: '#F5BDE6').
+
+##### Version 2 Simulation (`[color.simulation]`)
+
+- `note`: The color of the note text (default: '#F5A97F').
+- `colon`: The color of the colon text (default: '#F5A97F').
+- `text`: The color of the simulation text (default: '#F5A97F').
+
+#### Version 2 Stow
+
+- `linking_strategy`: The linking strategy to use when stowing files (default: 'short')
+  - Possible values: 'short', 'full'
+- `regex_strategy`: The regex strategy to use when checking against ignored and overridden files for stowing (default:
+  'rust')
+  - Possible values: 'rust', 'pcre2'
+- `matching_strategy`: The matching strategy to use when evaluating the ignored and overridden files for stowing
+  (default: 'combined')
+  - Possible values: 'combined', 'individual'
+- `conflict_strategy`: The conflict strategy to use when evaluating file conflicts (default: 'stop')
+  - Possible values: 'stop', 'skip', 'adopt', 'replace'
+- `printing_enabled`: Whether to enable printing detailed information for stowing or unstowing.
+
+### Version 1 Configuration Options
+
+- `version`: The configuration format version (default: `2`). Set to `1` for Version 1.
+
+#### Version 1 Ignored
+
+- `file`: The name of the ignored file (default: `.graft-ignore`)
+- `comment`: The comment character used in the ignored file (default: '#')
+
+#### Version 1 Overrides
 
 - `file`: The name of the override file (default: `.graft-override`)
 - `comment`: The comment character used in the override file (default: '#')
 
-#### Logging
+#### Version 1 Logging
 
 - `level`: The logging level (default: 'warn')
   - Possible values: 'off', 'error', 'warn', 'info', 'debug', 'trace'
@@ -219,7 +350,7 @@ printing_enable = false
 - `max_log_files`: The maximum number of log files to keep (default: None)
 - `color_support`: Whether to enable color support in logs (default: True)
 
-#### Color
+#### Version 1 Color
 
 - `enabled`: Whether to enable color support in logs (default: True)
 - `link`: The color of the link text (default: '#A6DA95').
@@ -239,13 +370,13 @@ printing_enable = false
 - `target`: The color of the target text (default: '#F5BDE6')
   - Colors can be specified as either a string (e.g., 'Magenta') or a hex code (e.g., '#FF00FF').
 - `note`: The color of the note text (default: '')
-  - Colors can be specified as eitehr a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
+  - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
 - `colon`: The color of the colon text (default: '')
-  - Colors can be specified as eitehr a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
+  - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
 - `simulation`: The color of the simulation text (default: '')
-  - Colors can be specified as eitehr a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
+  - Colors can be specified as either a string (e.g., 'Yellow') or a hex code (e.g., '#FFFF00')
 
-#### Stow
+#### Version 1 Stow
 
 - `linking_strategy`: The linking strategy to use when stowing files (default: 'short')
   - Possible values: 'short', 'full'
@@ -256,6 +387,9 @@ printing_enable = false
   (default: 'combined')
   - Possible values: 'combined', 'individual'
 - `printing_enable`: Whether to enable printing detailed information for stowing or unstowing.
+- `conflict_strategy`: The conflict strategy to use when evaluating file conflicts (default: 'stop')
+  - Possible values: 'stop', 'skip', 'adopt', 'replace'
+- `printing_enabled`: Whether to enable printing detailed information for stowing or unstowing.
 
 ### Configuration Location
 
