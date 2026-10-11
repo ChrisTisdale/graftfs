@@ -50,6 +50,12 @@ const DEFAULT_CREATE_COLOR: Color = Color::Rgb {
     b: 149,
 };
 
+const DEFAULT_MOVE_COLOR: Color = Color::Rgb {
+    r: 166,
+    g: 218,
+    b: 149,
+};
+
 const DEFAULT_ARROW_COLOR: Color = Color::Rgb {
     r: 138,
     g: 173,
@@ -78,16 +84,22 @@ const DEFAULT_COLON_COLOR: Color = Color::Reset;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ColorConfig {
+    #[serde(default = "default_enabled")]
     pub enabled: bool,
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub(crate) settings: SerializeColorSettings,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct V1ColorConfig {
+    #[serde(default = "default_enabled")]
     pub enabled: bool,
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub(crate) settings: V1SerializeColorSettings,
+}
+
+const fn default_enabled() -> bool {
+    true
 }
 
 impl Default for V1ColorConfig {
@@ -255,6 +267,37 @@ impl Display for CreateConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct MoveConfig {
+    pub move_item: Color,
+    pub colon: Color,
+    pub source: Color,
+    pub arrow: Color,
+    pub target: Color,
+}
+
+impl Default for MoveConfig {
+    fn default() -> Self {
+        Self {
+            move_item: DEFAULT_MOVE_COLOR,
+            colon: DEFAULT_COLON_COLOR,
+            source: DEFAULT_SOURCE_COLOR,
+            arrow: DEFAULT_ARROW_COLOR,
+            target: DEFAULT_TARGET_COLOR,
+        }
+    }
+}
+
+impl Display for MoveConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?}{:?}{:?}{:?}",
+            self.move_item, self.colon, self.source, self.target
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SimulationConfig {
     pub note: Color,
     pub colon: Color,
@@ -279,11 +322,19 @@ impl Display for SimulationConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub struct SerializeColorSettings {
+    #[serde(default)]
     pub link: SerializeLinkConfig,
+    #[serde(default)]
     pub unlink: SerializeUnlinkConfig,
+    #[serde(default)]
     pub list: SerializeListConfig,
+    #[serde(default)]
     pub remove: SerializeRemoveConfig,
+    #[serde(default)]
     pub create: SerializeCreateConfig,
+    #[serde(rename = "move", default)]
+    pub move_color: SerializeMoveConfig,
+    #[serde(default)]
     pub simulation: SerializeSimulationConfig,
 }
 
@@ -346,6 +397,7 @@ impl From<V1SerializeColorSettings> for SerializeColorSettings {
                 colon: None,
                 target: value.target,
             },
+            move_color: SerializeMoveConfig::default(),
             simulation: SerializeSimulationConfig::default(),
         }
     }
@@ -485,6 +537,35 @@ impl Display for SerializeCreateConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct SerializeMoveConfig {
+    #[serde(rename = "move")]
+    pub move_item: Option<Color>,
+    pub colon: Option<Color>,
+    pub source: Option<Color>,
+    pub arrow: Option<Color>,
+    pub target: Option<Color>,
+}
+
+impl Default for SerializeMoveConfig {
+    fn default() -> Self {
+        MoveConfig::default().into()
+    }
+}
+
+impl Display for SerializeMoveConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?}{:?}{:?}{:?}",
+            self.move_item.unwrap_or(DEFAULT_MOVE_COLOR),
+            self.colon.unwrap_or(DEFAULT_COLON_COLOR),
+            self.source.unwrap_or(DEFAULT_SOURCE_COLOR),
+            self.target.unwrap_or(DEFAULT_TARGET_COLOR)
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SerializeSimulationConfig {
     pub note: Option<Color>,
     pub colon: Option<Color>,
@@ -597,6 +678,30 @@ impl From<SerializeRemoveConfig> for RemoveConfig {
     }
 }
 
+impl From<MoveConfig> for SerializeMoveConfig {
+    fn from(value: MoveConfig) -> Self {
+        Self {
+            move_item: Some(value.move_item),
+            colon: Some(value.colon),
+            source: Some(value.source),
+            arrow: Some(value.arrow),
+            target: Some(value.target),
+        }
+    }
+}
+
+impl From<SerializeMoveConfig> for MoveConfig {
+    fn from(value: SerializeMoveConfig) -> Self {
+        Self {
+            move_item: value.move_item.unwrap_or(DEFAULT_MOVE_COLOR),
+            colon: value.colon.unwrap_or(DEFAULT_COLON_COLOR),
+            source: value.source.unwrap_or(DEFAULT_SOURCE_COLOR),
+            arrow: value.arrow.unwrap_or(DEFAULT_ARROW_COLOR),
+            target: value.target.unwrap_or(DEFAULT_TARGET_COLOR),
+        }
+    }
+}
+
 impl From<CreateConfig> for SerializeCreateConfig {
     fn from(value: CreateConfig) -> Self {
         Self {
@@ -645,6 +750,7 @@ impl From<ColorSettings> for SerializeColorSettings {
             list: value.list.into(),
             remove: value.remove.into(),
             create: value.create.into(),
+            move_color: value.move_color.into(),
             simulation: value.simulation.into(),
         }
     }
@@ -658,6 +764,7 @@ impl From<SerializeColorSettings> for ColorSettings {
             list: value.list.into(),
             remove: value.remove.into(),
             create: value.create.into(),
+            move_color: value.move_color.into(),
             simulation: value.simulation.into(),
         }
     }
@@ -667,8 +774,8 @@ impl Display for SerializeColorSettings {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "ColorSettings {{ link_color: {:?}, unlink_color: {:?}, list_color: {:?}, remove_color: {:?}, create_color: {:?}, simulation_color: {:?} }}",
-            self.link, self.unlink, self.list, self.remove, self.create, self.simulation,
+            "ColorSettings {{ link_color: {:?}, unlink_color: {:?}, list_color: {:?}, remove_color: {:?}, create_color: {:?}, move_color: {:?}, simulation_color: {:?} }}",
+            self.link, self.unlink, self.list, self.remove, self.create, self.move_color, self.simulation,
         )
     }
 }
@@ -680,6 +787,7 @@ pub struct ColorSettings {
     pub list: ListConfig,
     pub remove: RemoveConfig,
     pub create: CreateConfig,
+    pub move_color: MoveConfig,
     pub simulation: SimulationConfig,
 }
 
@@ -687,8 +795,8 @@ impl Display for ColorSettings {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "ColorSettings {{ link_color: {:?}, unlink_color: {:?}, list_color: {:?}, remove_color: {:?}, create_color: {:?}, simulation_color: {:?} }}",
-            self.link, self.unlink, self.list, self.remove, self.create, self.simulation
+            "ColorSettings {{ link_color: {:?}, unlink_color: {:?}, list_color: {:?}, remove_color: {:?}, create_color: {:?}, move_color: {:?}, simulation_color: {:?} }}",
+            self.link, self.unlink, self.list, self.remove, self.create, self.move_color, self.simulation
         )
     }
 }

@@ -16,11 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::commands::color_support::ColorPrinter;
 use crate::commands::command_error::InvalidPathSnafu;
 use crate::commands::stow_data::StowFilter;
 use crate::commands::{CommandError, CommandOperation, ListData, RestowData, StowData, UnstowData};
-use crate::config::LinkingStrategy;
 use crate::config::path_resolver::path_relative_from;
+use crate::config::{ConflictStrategy, LinkingStrategy};
 use grep::matcher::Matcher;
 use snafu::ResultExt;
 use std::ffi::{OsStr, OsString};
@@ -354,15 +355,27 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         }
 
         if operation.exists(&full_path) {
-            return Self::handle_existing_item(item, package, &full_path, operation);
+            return Self::handle_existing_item(item, target, package, &full_path, operation);
         }
 
+        Self::link_files(item, target, &full_path, package, operation)?;
+
+        Ok(())
+    }
+
+    fn link_files(
+        item: &Path,
+        target: &Path,
+        full_path: &Path,
+        package: &StowPackage<StowData>,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
         match package.data.options.linking_strategy {
             LinkingStrategy::Short => {
                 let source = path_relative_from(item, target).unwrap_or_else(|| item.to_path_buf());
-                operation.link_item(&source, &full_path)?;
+                operation.link_item(&source, full_path)?;
             }
-            LinkingStrategy::Full => operation.link_item(item, &full_path)?,
+            LinkingStrategy::Full => operation.link_item(item, full_path)?,
         }
 
         Ok(())
@@ -403,10 +416,17 @@ impl<TCommand: CommandOperation> Command<TCommand> {
 
     fn handle_existing_item(
         item: &Path,
+        target: &Path,
         package: &StowPackage<StowData>,
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
+        trace!(
+            "Handling existing item: {} with existing file: {}",
+            item.display(),
+            full_path.display()
+        );
+
         let item = item.canonicalize().with_context(|_| InvalidPathSnafu {
             path: item.display().to_string(),
         })?;
@@ -421,25 +441,96 @@ impl<TCommand: CommandOperation> Command<TCommand> {
             );
 
             Self::process_directory_entry(&item, full_path, package, operation)?;
-
             Ok(())
-        } else if Self::should_override(full_path, &package.data.options.filter) && operation.is_file(full_path) {
+        } else if Self::should_override(full_path, &package.data.options.filter) && operation.is_symlink(full_path) {
             info!("Overriding existing file: {}", full_path.display());
             operation.remove_item(full_path)?;
             operation.link_item(&item, full_path)?;
 
             Ok(())
         } else {
-            warn!("File already exists: {}", full_path.display());
-
-            Err(CommandError::DirectoryEntryAlreadyExists {
-                directory: item
-                    .file_name()
-                    .unwrap_or_else(|| OsStr::new("Unknown Name"))
-                    .display()
-                    .to_string(),
-            })
+            Self::handle_conflict(&item, target, package, full_path, operation)
         }
+    }
+
+    fn handle_conflict(
+        item: &Path,
+        target: &Path,
+        package: &StowPackage<StowData>,
+        full_path: &Path,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
+        trace!(
+            "Handling conflict for item: {} with existing file: {}",
+            item.display(),
+            full_path.display()
+        );
+
+        match package.data.options.conflict_strategy {
+            ConflictStrategy::Stop => {
+                error!("File already exists: {}", full_path.display());
+                Err(CommandError::DirectoryEntryAlreadyExists {
+                    directory: item
+                        .file_name()
+                        .unwrap_or_else(|| OsStr::new("Unknown Name"))
+                        .display()
+                        .to_string(),
+                })
+            }
+            ConflictStrategy::Skip => {
+                warn!(
+                    "File already exists: {}.  Skipping handling this file",
+                    full_path.display()
+                );
+                Ok(())
+            }
+            ConflictStrategy::Adopt => Self::handle_adopt(item, target, full_path, package, operation),
+            ConflictStrategy::Replace => Self::handle_replace(item, target, full_path, package, operation),
+        }
+    }
+
+    fn handle_replace(
+        item: &Path,
+        target: &Path,
+        full_path: &Path,
+        package: &StowPackage<StowData>,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
+        info!(
+            "Replacing existing file: {} with {}",
+            full_path.display(),
+            item.display()
+        );
+
+        operation.remove_item(full_path)?;
+        Self::link_files(item, target, full_path, package, operation)?;
+        Ok(())
+    }
+
+    fn handle_adopt(
+        item: &Path,
+        target: &Path,
+        full_path: &Path,
+        package: &StowPackage<StowData>,
+        operation: &mut TCommand,
+    ) -> Result<(), CommandError> {
+        if operation.is_symlink(full_path) {
+            warn!("Cannot adopt symlink: {}", full_path.display());
+            return Err(CommandError::UnableToMoveItem {
+                item: item.display().to_string(),
+            });
+        }
+
+        info!(
+            "Adopting existing file: {} into {}",
+            full_path.display(),
+            item.display()
+        );
+
+        operation.remove_item(item)?;
+        operation.move_item(full_path, item)?;
+        Self::link_files(item, target, full_path, package, operation)?;
+        Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -825,7 +916,15 @@ mod tests {
     fn override_existing_file_test() {
         let setup = StowSetup::new("override_file_test").unwrap();
 
+        let linked_file = setup.setup_path.join("linked_file.txt");
+        let result = fs::write(&linked_file, "linked content");
+        assert!(result.is_ok());
+
         let target_file = setup.setup_path.join("file.txt");
+        let mut op = CommandOperationImpl::Default(None);
+        let result = op.link_item(&linked_file, &target_file);
+        assert!(result.is_ok());
+
         let result = fs::write(&target_file, "existing content");
         assert!(result.is_ok());
 
@@ -837,6 +936,37 @@ mod tests {
             .stow()
             .with_linking_strategy(LinkingStrategy::Full)
             .with_overrides(overrides)
+            .build();
+        assert!(command.is_ok());
+
+        let result = command.unwrap().execute();
+        assert!(result.is_ok());
+
+        assert!(target_file.exists());
+        assert!(target_file.is_symlink());
+        let link_target = fs::read_link(&target_file);
+        assert!(link_target.is_ok());
+        let link_target = link_target.unwrap();
+        assert!(link_target.ends_with("file.txt"));
+        let content = fs::read_to_string(&target_file);
+        assert!(content.is_ok());
+        assert_eq!(content.unwrap(), "original content\n");
+        drop(setup);
+    }
+
+    #[rstest]
+    fn conflict_replace_existing_file_test() {
+        let setup = StowSetup::new("conflict_replace_file_test").unwrap();
+
+        let target_file = setup.setup_path.join("file.txt");
+        let result = fs::write(&target_file, "existing content");
+        assert!(result.is_ok());
+
+        let command = setup
+            .default_builder()
+            .stow()
+            .with_linking_strategy(LinkingStrategy::Full)
+            .with_conflict_strategy(ConflictStrategy::Replace)
             .build();
         assert!(command.is_ok());
 

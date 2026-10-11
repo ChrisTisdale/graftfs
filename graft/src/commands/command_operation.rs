@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use crate::commands::color_support::ColorPrinter;
 use crate::commands::command_error::{
     AbsolutePathSnafu, CreateDirectorySnafu, DirectoryReadSnafu, DirectoryRemoveSnafu, FileRemoveSnafu, ReadLinkSnafu,
-    SymLinkSnafu, WorkingDirectorySnafu,
+    RenameItemSnafu, SymLinkSnafu, UnableToMoveItemSnafu, WorkingDirectorySnafu,
 };
 use crate::commands::{ColorSupport, CommandError};
 use snafu::ResultExt;
@@ -137,6 +138,40 @@ pub trait CommandOperation {
     /// }
     /// ```
     fn remove_item(&mut self, target: &Path) -> Result<(), CommandError>;
+
+    /// Moves a file or directory from the source path to the destination path.
+    ///
+    /// # Parameters
+    ///
+    /// * `from` - A reference to a [`Path`] that specifies the source file or directory to be moved.
+    /// * `to` - A reference to a [`Path`] that specifies the destination where the source should be moved to.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If the move operation is successful.
+    /// * `Err(CommandError)` - If an error occurs during the move process. The `CommandError` provides details about the failure.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// * The `from` path does not exist.
+    /// * There are insufficient permissions to read from the `from` path or write to the `to` path.
+    /// * A failure occurs while performing the file or directory copy operation (e.g., disk errors).
+    ///
+    /// # Examples
+    /// ```
+    /// use std::path::Path;
+    /// use graft::commands::{CommandOperation, CommandOperationImpl};
+    ///
+    /// let mut instance = CommandOperationImpl::default();
+    /// let from = Path::new("/path/to/item");
+    /// let to = Path::new("/path/to/move/item");
+    /// match instance.move_item(&from, &to) {
+    ///     Ok(_) => println!("Item was successfully moved."),
+    ///     Err(e) => eprintln!("Failed to moved item: {:?}", e),
+    /// }
+    /// ```
+    fn move_item(&mut self, from: &Path, to: &Path) -> Result<(), CommandError>;
 
     /// Creates a new directory at the specified target path.
     ///
@@ -593,10 +628,7 @@ impl CommandOperation for CommandOperationImpl {
         info!("Linking {} {}", item.display(), target.display());
         match self {
             Self::Default(color) => {
-                if let Some(color) = color {
-                    color.print_link_text(item, target);
-                }
-
+                color.print_link_text(item, target);
                 os::unix::fs::symlink(item, target).with_context(|_| SymLinkSnafu {
                     target: item.display().to_string(),
                     destination: target.display().to_string(),
@@ -613,10 +645,7 @@ impl CommandOperation for CommandOperationImpl {
         info!("Linking {} {}", item.display(), target.display());
         match self {
             Self::Default(color) => {
-                if let Some(color) = color {
-                    color.print_link_text(item, target);
-                }
-
+                color.print_link_text(item, target);
                 if self.is_directory(item) {
                     os::windows::fs::symlink_dir(item, target).with_context(|_| SymLinkSnafu {
                         target: item.display().to_string(),
@@ -645,10 +674,7 @@ impl CommandOperation for CommandOperationImpl {
         info!("Deleting symlink: {}", entry_path.display());
         match self {
             Self::Default(color) => {
-                if let Some(color) = color {
-                    color.print_unlink_text(entry_path);
-                }
-
+                color.print_unlink_text(entry_path);
                 fs::remove_file(entry_path).with_context(|_| FileRemoveSnafu {
                     file: entry_path.display().to_string(),
                 })?;
@@ -669,10 +695,7 @@ impl CommandOperation for CommandOperationImpl {
         info!("Deleting symlink: {}", entry_path.display());
         match self {
             Self::Default(color) => {
-                if let Some(color) = color {
-                    color.print_unlink_text(entry_path);
-                }
-
+                color.print_unlink_text(entry_path);
                 if self.is_directory(entry_path) {
                     fs::remove_dir(entry_path).with_context(|_| DirectoryRemoveSnafu {
                         directory: entry_path.display().to_string(),
@@ -692,10 +715,7 @@ impl CommandOperation for CommandOperationImpl {
     fn remove_item(&mut self, target: &Path) -> Result<(), CommandError> {
         match self {
             Self::Default(color) => {
-                if let Some(color) = color {
-                    color.print_remove_text(target);
-                }
-
+                color.print_remove_text(target);
                 if self.is_directory(target) {
                     info!("Deleting directory: {}", target.display());
                     fs::remove_dir(target).with_context(|_| DirectoryRemoveSnafu {
@@ -714,14 +734,39 @@ impl CommandOperation for CommandOperationImpl {
         Ok(())
     }
 
+    fn move_item(&mut self, from: &Path, to: &Path) -> Result<(), CommandError> {
+        match self {
+            Self::Default(color) => {
+                color.print_move_text(from, to);
+                if self.is_directory(from) {
+                    fs::rename(from, to).with_context(|_| RenameItemSnafu {
+                        from: from.display().to_string(),
+                        to: to.display().to_string(),
+                    })?;
+                } else if self.is_file(from) {
+                    fs::rename(from, to).with_context(|_| RenameItemSnafu {
+                        from: from.display().to_string(),
+                        to: to.display().to_string(),
+                    })?;
+                } else {
+                    warn!("Unable to move item: {}", from.display());
+                    UnableToMoveItemSnafu {
+                        item: from.display().to_string(),
+                    }
+                    .fail()?;
+                }
+            }
+            Self::Simulated(data) => data.color_support.print_move_text(from, to),
+        }
+
+        Ok(())
+    }
+
     fn create_directory(&mut self, target: &Path) -> Result<(), CommandError> {
         info!("Creating directory: {}", target.display());
         match self {
             Self::Default(color) => {
-                if let Some(color) = color {
-                    color.print_create_text(target);
-                }
-
+                color.print_create_text(target);
                 fs::create_dir_all(target).with_context(|_| CreateDirectorySnafu {
                     directory: target.display().to_string(),
                 })?;

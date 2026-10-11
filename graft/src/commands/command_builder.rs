@@ -23,7 +23,7 @@ use crate::commands::{
     ColorSupport, Command, CommandBuildError, CommandOperation, CommandOperationImpl, ListData, RestowData, StowData,
     StowOptions, UnstowData,
 };
-use crate::config::{LinkingStrategy, MatchingStrategy, RegexStrategy};
+use crate::config::{ConflictStrategy, LinkingStrategy, MatchingStrategy, RegexStrategy};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -346,6 +346,13 @@ impl<T: CommandOperation + Default> StowCommandBuilder<T> {
         self
     }
 
+    // Sets the conflict strategy for the stow command.
+    #[must_use]
+    pub const fn with_conflict_strategy(mut self, strategy: ConflictStrategy) -> Self {
+        self.stow_strategy.conflict = strategy;
+        self
+    }
+
     /// Switches the stow command into simulated execution mode.
     #[must_use]
     pub fn simulate(self, color_support: ColorSupport) -> StowCommandBuilder<CommandOperationImpl> {
@@ -526,6 +533,13 @@ impl<T: CommandOperation + Default> RestowCommandBuilder<T> {
     #[must_use]
     pub fn with_matching_strategy(mut self, strategy: MatchingStrategy) -> Self {
         self.stow_command = self.stow_command.with_matching_strategy(strategy);
+        self
+    }
+
+    // Sets the conflict strategy for the restow command.
+    #[must_use]
+    pub fn with_conflict_strategy(mut self, strategy: ConflictStrategy) -> Self {
+        self.stow_command = self.stow_command.with_conflict_strategy(strategy);
         self
     }
 
