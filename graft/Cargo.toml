@@ -34,7 +34,8 @@ name = "graft"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["external-logging"]
+external-logging = ["tracing-log"]
 nushell = ["clap_complete_nushell"]
 
 [dependencies]
@@ -49,6 +50,7 @@ supports-color = { version = "3.0.2" }
 toml = { version = "1.1.8" }
 tracing = { version = "0.1.44" }
 tracing-appender = { version = "0.2.5" }
+tracing-log = { version = "0.2.0", optional = true }
 tracing-subscriber = { version = "0.3.23", features = ["json"] }
 
 [dev-dependencies]

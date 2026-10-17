@@ -25,4 +25,9 @@ use tracing::dispatcher::SetGlobalDefaultError;
 pub enum LoggingError {
     #[snafu(display("Error setting global default logger"))]
     LoggingError { source: SetGlobalDefaultError },
+    #[cfg(feature = "external-logging")]
+    #[snafu(display("Error setting logger"))]
+    SetLoggerError {
+        source: tracing_log::log::SetLoggerError,
+    },
 }
