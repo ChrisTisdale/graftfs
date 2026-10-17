@@ -39,6 +39,9 @@ use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::fmt::format::{FmtSpan, Format};
 use tracing_subscriber::fmt::{FormatFields, MakeWriter, SubscriberBuilder};
 
+#[cfg(feature = "external-logging")]
+use tracing_log::{LogTracer, log};
+
 const DEFAULT_LOG_FILE: &str = "graft.log";
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
@@ -173,6 +176,34 @@ impl From<LoggingLevel> for LevelFilter {
     }
 }
 
+#[cfg(feature = "external-logging")]
+impl From<log::LevelFilter> for LoggingLevel {
+    fn from(value: log::LevelFilter) -> Self {
+        match value {
+            log::LevelFilter::Off => Self::Off,
+            log::LevelFilter::Trace => Self::Trace,
+            log::LevelFilter::Debug => Self::Debug,
+            log::LevelFilter::Info => Self::Info,
+            log::LevelFilter::Warn => Self::Warn,
+            log::LevelFilter::Error => Self::Error,
+        }
+    }
+}
+
+#[cfg(feature = "external-logging")]
+impl From<LoggingLevel> for log::LevelFilter {
+    fn from(value: LoggingLevel) -> Self {
+        match value {
+            LoggingLevel::Off => Self::Off,
+            LoggingLevel::Trace => Self::Trace,
+            LoggingLevel::Debug => Self::Debug,
+            LoggingLevel::Info => Self::Info,
+            LoggingLevel::Warn => Self::Warn,
+            LoggingLevel::Error => Self::Error,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
 pub enum ConsoleLoggingStream {
@@ -184,13 +215,13 @@ pub enum ConsoleLoggingStream {
 impl ConsoleLoggingStream {
     pub(crate) fn setup_logger(
         self,
-        level_filter: LevelFilter,
+        log_level: LoggingLevel,
         logging_format: LoggingFormat,
         color_support: bool,
     ) -> Result<(), LoggingError> {
         match self {
-            Self::Stdout => logging_format.setup_logger(level_filter, stdout, color_support),
-            Self::Stderr => logging_format.setup_logger(level_filter, stderr, color_support),
+            Self::Stdout => logging_format.setup_logger(log_level, stdout, color_support),
+            Self::Stderr => logging_format.setup_logger(log_level, stderr, color_support),
         }
     }
 }
@@ -400,16 +431,24 @@ pub enum LoggingFormat {
 impl LoggingFormat {
     pub(crate) fn setup_logger<T>(
         self,
-        level_filter: LevelFilter,
+        log_level: LoggingLevel,
         stream: T,
         color_support: bool,
     ) -> Result<(), LoggingError>
     where
         T: for<'writer> MakeWriter<'writer> + Send + Sync + 'static,
     {
+        #[cfg(feature = "external-logging")]
+        {
+            LogTracer::builder()
+                .with_max_level(log_level)
+                .init()
+                .context(crate::config::logging_error::SetLoggerSnafu)?;
+        }
+
         match self {
             Self::Compact => {
-                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), level_filter)
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), log_level)
                     .with_ansi(color_support)
                     .with_writer(stream)
                     .finish();
@@ -417,7 +456,7 @@ impl LoggingFormat {
                 subscriber::set_global_default(logger).context(LoggingSnafu)?;
             }
             Self::Pretty => {
-                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), level_filter)
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), log_level)
                     .with_ansi(color_support)
                     .with_writer(stream)
                     .finish();
@@ -425,7 +464,7 @@ impl LoggingFormat {
                 subscriber::set_global_default(logger).context(LoggingSnafu)?;
             }
             Self::Json => {
-                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), level_filter)
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), log_level)
                     .with_ansi(color_support)
                     .with_writer(stream)
                     .finish();
@@ -439,7 +478,7 @@ impl LoggingFormat {
 
     fn setup_subscriber_builder<TFields, TFormat>(
         subscriber_builder: SubscriberBuilder<TFields, Format<TFormat>>,
-        log_level: LevelFilter,
+        log_level: LoggingLevel,
     ) -> SubscriberBuilder<TFields, Format<TFormat>>
     where
         TFields: for<'writer> FormatFields<'writer> + 'static,
@@ -612,14 +651,14 @@ impl LoggingConfig {
             .and_then(|d| self.get_rolling_appender(d))
             .map(tracing_appender::non_blocking)
             .map_or_else(
-                || self.set_console_logger(config_level.into(), config_format, stream),
-                |(appender, guard)| Self::set_file_logger(config_level.into(), config_format, appender, guard),
+                || self.set_console_logger(config_level, config_format, stream),
+                |(appender, guard)| Self::set_file_logger(config_level, config_format, appender, guard),
             )
     }
 
     fn set_console_logger(
         &self,
-        config_level: LevelFilter,
+        config_level: LoggingLevel,
         logging_format: LoggingFormat,
         stream: ConsoleLoggingStream,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
@@ -629,7 +668,7 @@ impl LoggingConfig {
     }
 
     fn set_file_logger(
-        config_level: LevelFilter,
+        config_level: LoggingLevel,
         logging_format: LoggingFormat,
         appender: NonBlocking,
         guard: WorkerGuard,
