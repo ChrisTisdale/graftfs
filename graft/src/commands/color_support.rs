@@ -164,7 +164,7 @@ impl ColorPrinter for ColorSupport {
                 style("MV").with(config.move_color.move_item),
                 style(":").with(config.move_color.colon),
                 style(source.display()).with(config.move_color.target),
-                style("=>").with(config.move_color.colon),
+                style("=>").with(config.move_color.arrow),
                 style(target.display()).with(config.move_color.target),
             ),
         }

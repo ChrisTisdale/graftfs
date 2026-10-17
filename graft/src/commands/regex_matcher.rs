@@ -21,15 +21,25 @@ use crate::commands::regex_captures::RegexCaptures;
 use crate::config::RegexStrategy;
 use grep::matcher::{Match, Matcher};
 use snafu::ResultExt;
-use std::fmt::Display;
-use tracing::warn;
+use std::fmt::{Display, Formatter};
+use tracing::{debug, instrument, warn};
 
 pub enum RegexMatcher {
     Rust(grep::regex::RegexMatcher),
     Pcre2(grep::pcre2::RegexMatcher),
 }
 
+impl Display for RegexMatcher {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rust(_) => write!(f, "Rust"),
+            Self::Pcre2(_) => write!(f, "PCRE2"),
+        }
+    }
+}
+
 impl RegexMatcher {
+    #[instrument(level = "trace", skip_all, fields(regex_strategy = %regex_strategy, item = %item))]
     pub fn try_create_matcher<T: AsRef<str> + Display>(regex_strategy: RegexStrategy, item: T) -> Option<Self> {
         match regex_strategy {
             RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
@@ -45,7 +55,13 @@ impl RegexMatcher {
         }
     }
 
+    #[instrument(level = "trace", skip_all, fields(regex_strategy = %regex_strategy, count = %items.len()))]
     pub fn try_create_combined_matcher<T: AsRef<str>>(regex_strategy: RegexStrategy, items: &[T]) -> Option<Self> {
+        if items.is_empty() {
+            debug!("No regex items provided");
+            return None;
+        }
+
         match regex_strategy {
             RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
                 .build_many(items)

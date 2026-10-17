@@ -53,7 +53,7 @@ pub struct StowData {
     pub(crate) options: StowOptions,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct StowStrategies {
     pub linking: LinkingStrategy,
     pub regex: RegexStrategy,
@@ -70,7 +70,7 @@ impl StowStrategies {
         match self.matching {
             MatchingStrategy::Individual => regex_strings
                 .filter_map(|item| {
-                    debug!("Adding {match_type} matched item: {item}");
+                    debug!(item = %item, "Adding {match_type} matched item");
                     RegexMatcher::try_create_matcher(self.regex, item)
                 })
                 .collect(),
@@ -78,7 +78,7 @@ impl StowStrategies {
                 let regex_strings = regex_strings.collect::<Vec<T>>();
                 if enabled!(Level::DEBUG) {
                     for item in &regex_strings {
-                        debug!("Adding {match_type} matched item: {item}");
+                        debug!(item = %item, "Adding {match_type} matched item");
                     }
                 }
 
@@ -93,8 +93,8 @@ impl Display for StowStrategies {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "StowStrategies: linking={}, regex={}, matching={}",
-            self.linking, self.regex, self.matching
+            "StowStrategies: linking={}, regex={}, matching={}, conflict={}",
+            self.linking, self.regex, self.matching, self.conflict
         )
     }
 }
@@ -109,10 +109,10 @@ impl StowOptions {
         overrides: O,
     ) -> Self {
         trace!(
-            "Creating stow options.  dot_file_prefix={}, strategies={{ {} }}, no_folding={}",
-            dot_file_prefix.as_deref().unwrap_or_default(),
-            strategies,
-            no_folding
+            dot_file_prefix = ?dot_file_prefix,
+            strategies = ?strategies,
+            no_folding = no_folding,
+            "Creating stow options."
         );
 
         debug!("Creating ignore matches");

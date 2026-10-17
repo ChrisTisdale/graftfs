@@ -161,7 +161,7 @@ fn main() -> Result<(), CliError> {
 
 fn process_command_line_args() -> Result<(), CliError> {
     let args = CommandLineProcessor::get_cli_args()?;
-    trace!("Processed Commandline Arguments: {args}");
+    trace!(args = %args, "Processed Commandline Arguments");
     let executor = args.executor;
     let executor_text = format!("{executor}");
     match executor {
@@ -171,6 +171,6 @@ fn process_command_line_args() -> Result<(), CliError> {
         Executor::Upgrade(cmd) => cmd.upgrade_config()?,
     }
 
-    info!("Successfully processed {executor_text}");
+    info!(executor = executor_text, "Successfully processed.");
     Ok(())
 }
