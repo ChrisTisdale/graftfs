@@ -625,7 +625,7 @@ impl CommandOperation for CommandOperationImpl {
 
     #[cfg(unix)]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
-        info!("Linking {} {}", item.display(), target.display());
+        info!(item_path = ?item, target_path = ?target, "Linking");
         match self {
             Self::Default(color) => {
                 color.print_link_text(item, target);
@@ -642,7 +642,7 @@ impl CommandOperation for CommandOperationImpl {
 
     #[cfg(target_os = "windows")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
-        info!("Linking {} {}", item.display(), target.display());
+        info!(item_path = ?item, target_path = ?target, "Linking");
         match self {
             Self::Default(color) => {
                 color.print_link_text(item, target);
@@ -667,11 +667,11 @@ impl CommandOperation for CommandOperationImpl {
     #[cfg(unix)]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
-            warn!("Not a symlink: {}", entry_path.display());
+            warn!(entry_path = ?entry_path, "Not a symlink");
             return Ok(());
         }
 
-        info!("Deleting symlink: {}", entry_path.display());
+        info!(entry_path = ?entry_path, "Deleting symlink");
         match self {
             Self::Default(color) => {
                 color.print_unlink_text(entry_path);
@@ -688,11 +688,11 @@ impl CommandOperation for CommandOperationImpl {
     #[cfg(target_os = "windows")]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
-            warn!("Not a symlink: {}", entry_path.display());
+            warn!(entry_path = ?entry_path, "Not a symlink");
             return Ok(());
         }
 
-        info!("Deleting symlink: {}", entry_path.display());
+        info!(entry_path = ?entry_path, "Deleting symlink");
         match self {
             Self::Default(color) => {
                 color.print_unlink_text(entry_path);
@@ -717,12 +717,12 @@ impl CommandOperation for CommandOperationImpl {
             Self::Default(color) => {
                 color.print_remove_text(target);
                 if self.is_directory(target) {
-                    info!("Deleting directory: {}", target.display());
+                    info!(path = ?target, "Deleting directory");
                     fs::remove_dir(target).with_context(|_| DirectoryRemoveSnafu {
                         directory: target.display().to_string(),
                     })?;
                 } else {
-                    info!("Deleting file: {}", target.display());
+                    info!(path = ?target, "Deleting file");
                     fs::remove_file(target).with_context(|_| FileRemoveSnafu {
                         file: target.display().to_string(),
                     })?;
@@ -749,7 +749,7 @@ impl CommandOperation for CommandOperationImpl {
                         to: to.display().to_string(),
                     })?;
                 } else {
-                    warn!("Unable to move item: {}", from.display());
+                    warn!(path = ?from, "Unable to move item");
                     UnableToMoveItemSnafu {
                         item: from.display().to_string(),
                     }
@@ -763,7 +763,7 @@ impl CommandOperation for CommandOperationImpl {
     }
 
     fn create_directory(&mut self, target: &Path) -> Result<(), CommandError> {
-        info!("Creating directory: {}", target.display());
+        info!(path = ?target, "Creating directory");
         match self {
             Self::Default(color) => {
                 color.print_create_text(target);

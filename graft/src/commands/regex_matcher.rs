@@ -45,12 +45,12 @@ impl RegexMatcher {
             RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
                 .build(item.as_ref())
                 .map(RegexMatcher::Rust)
-                .map_err(|e| warn!("Failed to create Rust regex matcher for {item}: {e}"))
+                .map_err(|e| warn!(item = %item, error = %e, "Failed to create Rust regex matcher"))
                 .ok(),
             RegexStrategy::Pcre2 => grep::pcre2::RegexMatcherBuilder::new()
                 .build(item.as_ref())
                 .map(RegexMatcher::Pcre2)
-                .map_err(|e| warn!("Failed to create PCRE2 regex matcher for {item}: {e}"))
+                .map_err(|e| warn!(item = %item, error = %e, "Failed to create PCRE2 regex matcher"))
                 .ok(),
         }
     }
@@ -66,12 +66,12 @@ impl RegexMatcher {
             RegexStrategy::Rust => grep::regex::RegexMatcherBuilder::new()
                 .build_many(items)
                 .map(RegexMatcher::Rust)
-                .map_err(|e| warn!("Failed to create Rust regex matcher: {e}"))
+                .map_err(|e| warn!(error = %e, "Failed to create Rust regex matcher"))
                 .ok(),
             RegexStrategy::Pcre2 => grep::pcre2::RegexMatcherBuilder::new()
                 .build_many(items)
                 .map(RegexMatcher::Pcre2)
-                .map_err(|e| warn!("Failed to create PCRE2 regex matcher: {e}"))
+                .map_err(|e| warn!(error = %e, "Failed to create PCRE2 regex matcher"))
                 .ok(),
         }
     }
