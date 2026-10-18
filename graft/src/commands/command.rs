@@ -481,11 +481,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         package: &StowPackage<StowData>,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        info!(
-            "Replacing existing file: {} with {}",
-            full_path.display(),
-            item.display()
-        );
+        info!(path = %full_path.display(), item = %item.display(), "Replacing existing file");
 
         operation.remove_item(full_path)?;
         Self::link_files(item, target, full_path, package, operation)?;
@@ -500,17 +496,13 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
         if operation.is_symlink(full_path) {
-            warn!("Cannot adopt symlink: {}", full_path.display());
+            warn!(path = %full_path.display(), "Cannot adopt symlink");
             return Err(CommandError::UnableToMoveItem {
                 item: item.display().to_string(),
             });
         }
 
-        info!(
-            "Adopting existing file: {} into {}",
-            full_path.display(),
-            item.display()
-        );
+        info!(path = %full_path.display(), item = %item.display(), "Adopting existing file");
 
         operation.remove_item(item)?;
         operation.move_item(full_path, item)?;
@@ -521,11 +513,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
     #[instrument(level = "debug", skip_all)]
     fn process_unstow(args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
         for package in &args.packages {
-            info!(
-                "Unstowing files from {} to {}",
-                package.display(),
-                args.target.display()
-            );
+            info!(package_dir = %package.display(), target_dir = %args.target.display(), "Unstowing files");
 
             Self::unstow_directory_entry(package, &args.target, args, operation)?;
         }
@@ -537,9 +525,9 @@ impl<TCommand: CommandOperation> Command<TCommand> {
     fn process_list(args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
         for package in &args.packages {
             info!(
-                "Listing files from {} that are stowed in {}",
-                package.display(),
-                args.target.display()
+                package_dir = %package.display(),
+                target_dir = %args.target.display(),
+                "Listing files that are stowed"
             );
 
             Self::list_directory_entry(package, &args.target, args, operation)?;
@@ -630,7 +618,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
                     .read_directory(parent)
                     .is_ok_and(|mut entries| entries.next().is_none())
             {
-                info!("Removing empty directory: {}", parent.display());
+                info!(path = %parent.display(), "Removing empty directory");
                 operation.remove_item(parent)?;
                 current = parent.parent();
             } else {
