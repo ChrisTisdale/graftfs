@@ -174,7 +174,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
     #[instrument(level = "debug", skip_all)]
     fn process_stow(args: &StowData, operation: &mut TCommand) -> Result<(), CommandError> {
         if !operation.is_directory(&args.target) {
-            error!(target_dir = %args.target.display(), "Target directory does not exist or is not a directory");
+            error!(target_dir = ?args.target, "Target directory does not exist or is not a directory");
             return Err(CommandError::InvalidTargetDirectory {
                 directory: args.target.display().to_string(),
             });
@@ -193,16 +193,12 @@ impl<TCommand: CommandOperation> Command<TCommand> {
     }
 
     fn process_stow_package(package: &StowPackage<StowData>, operation: &mut TCommand) -> Result<(), CommandError> {
-        info!(
-            package_dir = %package.directory.display(),
-            target_dir = %package.data.target.display(),
-            "Stowing files"
-        );
+        info!(package_dir = ?package.directory, target_dir = ?package.data.target, "Stowing files");
 
         if package.directory == package.data.target {
             error!(
-                stow_dir = %package.directory.display(),
-                target_dir = %package.data.target.display(),
+                stow_dir = ?package.directory,
+                target_dir = ?package.data.target,
                 "Stow directory cannot be the same as the target directory"
             );
 
@@ -212,18 +208,14 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         }
 
         if !operation.is_directory(&package.data.target) {
-            error!(
-                target_dir = %package.data.target.display(),
-                "Target directory does not exist or is not a directory"
-            );
-
+            error!(target_dir = ?package.data.target, "Target directory does not exist or is not a directory");
             return Err(CommandError::InvalidTargetDirectory {
                 directory: package.data.target.display().to_string(),
             });
         }
 
         if !operation.is_directory(package.directory) {
-            error!(stow_dir = %package.directory.display(), "Stow directory does not exist or is not a directory");
+            error!(stow_dir = ?package.directory, "Stow directory does not exist or is not a directory");
             return Err(CommandError::StowDirectoryNotFound {
                 directory: package.directory.display().to_string(),
             });
@@ -238,34 +230,34 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         entry_path: &Path,
         filters: &[TMatcher],
     ) -> bool {
-        trace!(caller = %caller, entry_path = %entry_path.display(), "Checking if file matches entry");
+        trace!(caller = %caller, entry_path = ?entry_path, "Checking if file matches entry");
 
         if let Some(name) = entry_path.as_os_str().to_str() {
             for matcher in filters {
                 if let Some(size) = matcher.shortest_match(name.as_bytes()).unwrap_or(None)
                     && size == name.len()
                 {
-                    info!(caller = %caller, entry_path = %entry_path.display(), "Entry found");
+                    info!(caller = %caller, entry_path = ?entry_path, "Entry found");
                     return true;
                 }
             }
         } else {
-            warn!(entry_path = %entry_path.display(), "Failed to get file name for entry");
+            warn!(entry_path = ?entry_path, "Failed to get file name for entry");
             return false;
         }
 
-        debug!(caller = %caller, entry_path = %entry_path.display(), "No matching entry found");
+        debug!(caller = %caller, entry_path = ?entry_path, "No matching entry found");
         false
     }
 
     fn is_ignored(entry_path: &Path, filter: &StowFilter) -> bool {
-        trace!(entry_path = %entry_path.display(), "Checking if item should be ignored");
+        trace!(entry_path = ?entry_path, "Checking if item should be ignored");
 
         Self::path_matches_filter("Ignored", entry_path, &filter.ignored)
     }
 
     fn should_override(entry_path: &Path, filter: &StowFilter) -> bool {
-        trace!(entry_path = %entry_path.display(), "Checking if item should be overridden");
+        trace!(entry_path = ?entry_path, "Checking if item should be overridden");
         Self::path_matches_filter("Override", entry_path, &filter.overrides)
     }
 
@@ -275,7 +267,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         package: &StowPackage<StowData>,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        trace!(entry_path = %entry.display(), "Processing directory entry");
+        trace!(entry_path = ?entry, "Processing directory entry");
         Self::process_directory(entry, target, package, operation, Self::stow_item)
     }
 
@@ -305,9 +297,9 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         package: &StowPackage<StowData>,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        trace!(entry_path = %item.display(), "Reviewing directory entry");
+        trace!(entry_path = ?item, "Reviewing directory entry");
         if Self::is_ignored(item, &package.data.options.filter) {
-            debug!(entry_path = %item.display(), "Ignoring item");
+            debug!(entry_path = ?item, "Ignoring item");
             return Ok(());
         }
 
@@ -318,12 +310,12 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         if let Ok(updated_root) = updated_root
             && Self::is_ignored(&updated_root, &package.data.options.filter)
         {
-            debug!(entry_path = %item.display(), "Ignoring item");
+            debug!(entry_path = ?item, "Ignoring item");
             return Ok(());
         }
 
         if operation.is_symlink(item) {
-            error!(item_path = %item.display(), "Stow directory contains a symbolic link");
+            error!(item_path = ?item, "Stow directory contains a symbolic link");
 
             return Err(CommandError::InvalidStowItem {
                 item: item.display().to_string(),
@@ -333,7 +325,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         let no_folding = operation.is_directory(item) && package.data.options.no_folding;
         let file_name = Self::get_item_name(item, package.data.options.dot_file_prefix.as_ref())?;
         let full_path = target.join(file_name);
-        debug!(entry_path = %item.display(), no_folding, "Trying to stow directory entry");
+        debug!(entry_path = ?item, no_folding = no_folding, "Trying to stow directory entry");
 
         if no_folding && !operation.exists(&full_path) {
             return Self::process_fold(package, item, &full_path, operation);
@@ -394,7 +386,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        info!(path = %full_path.display(), "Creating directory");
+        info!(path = ?full_path, "Creating directory");
         operation.create_directory(full_path)?;
         Self::process_directory_entry(entry_path, full_path, package, operation)
     }
@@ -406,29 +398,25 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        trace!(
-            item_path = %item.display(),
-            target_path = %full_path.display(),
-            "Handling existing item"
-        );
+        trace!(item_path = ?item, target_path = ?full_path, "Handling existing item");
 
         let item = item.canonicalize().with_context(|_| InvalidPathSnafu {
             path: item.display().to_string(),
         })?;
 
         if operation.is_symlink(full_path) && operation.read_link(full_path)? == item {
-            info!(path = %full_path.display(), "Skipping existing symlink");
+            info!(path = ?full_path, "Skipping existing symlink");
             Ok(())
         } else if operation.is_directory(&item) && operation.is_directory(full_path) {
             info!(
-                path = %full_path.display(),
-                "Directory already exists traversing its children.  Stowing children of:"
+                path = ?full_path,
+                "Directory already exists traversing its children.  Stowing children"
             );
 
             Self::process_directory_entry(&item, full_path, package, operation)?;
             Ok(())
         } else if Self::should_override(full_path, &package.data.options.filter) && operation.is_symlink(full_path) {
-            info!(path = %full_path.display(), "Overriding existing file");
+            info!(path = ?full_path, "Overriding existing file");
             operation.remove_item(full_path)?;
             operation.link_item(&item, full_path)?;
 
@@ -445,15 +433,11 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         full_path: &Path,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        trace!(
-            item_path = %item.display(),
-            target_path = %full_path.display(),
-            "Handling conflict"
-        );
+        trace!(item_path = ?item, target_path = ?full_path, "Handling conflict");
 
         match package.data.options.conflict_strategy {
             ConflictStrategy::Stop => {
-                error!(path = %full_path.display(), "File already exists");
+                error!(path = ?full_path, "File already exists");
                 Err(CommandError::DirectoryEntryAlreadyExists {
                     directory: item
                         .file_name()
@@ -463,10 +447,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
                 })
             }
             ConflictStrategy::Skip => {
-                warn!(
-                    path = %full_path.display(),
-                    "File already exists.  Skipping handling this file"
-                );
+                warn!(path = ?full_path, "File already exists.  Skipping handling this file");
                 Ok(())
             }
             ConflictStrategy::Adopt => Self::handle_adopt(item, target, full_path, package, operation),
@@ -481,8 +462,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         package: &StowPackage<StowData>,
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
-        info!(path = %full_path.display(), item = %item.display(), "Replacing existing file");
-
+        info!(existing = ?full_path, item = ?item, "Replacing existing file");
         operation.remove_item(full_path)?;
         Self::link_files(item, target, full_path, package, operation)?;
         Ok(())
@@ -496,14 +476,13 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         operation: &mut TCommand,
     ) -> Result<(), CommandError> {
         if operation.is_symlink(full_path) {
-            warn!(path = %full_path.display(), "Cannot adopt symlink");
+            warn!(path = ?full_path, "Cannot adopt symlink");
             return Err(CommandError::UnableToMoveItem {
                 item: item.display().to_string(),
             });
         }
 
-        info!(path = %full_path.display(), item = %item.display(), "Adopting existing file");
-
+        info!(existing = ?full_path, item = ?item, "Adopting existing file");
         operation.remove_item(item)?;
         operation.move_item(full_path, item)?;
         Self::link_files(item, target, full_path, package, operation)?;
@@ -513,7 +492,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
     #[instrument(level = "debug", skip_all)]
     fn process_unstow(args: &UnstowData, operation: &mut TCommand) -> Result<(), CommandError> {
         for package in &args.packages {
-            info!(package_dir = %package.display(), target_dir = %args.target.display(), "Unstowing files");
+            info!(package_dir = ?package, target_dir = ?args.target, "Unstowing files");
 
             Self::unstow_directory_entry(package, &args.target, args, operation)?;
         }
@@ -524,12 +503,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
     #[instrument(level = "debug", skip_all)]
     fn process_list(args: &ListData, operation: &mut TCommand) -> Result<(), CommandError> {
         for package in &args.packages {
-            info!(
-                package_dir = %package.display(),
-                target_dir = %args.target.display(),
-                "Listing files that are stowed"
-            );
-
+            info!(package_dir = ?package, target_dir = ?args.target, "Listing files that are stowed");
             Self::list_directory_entry(package, &args.target, args, operation)?;
         }
 
@@ -559,7 +533,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         let full_path = target.join(item_name);
 
         if operation.is_symlink(&full_path) && operation.read_link(&full_path).is_ok_and(|p| p == item) {
-            info!(path = %full_path.display(), "Removing symlink");
+            info!(path = ?full_path, "Removing symlink");
             operation.remove_link(&full_path)?;
             Self::cleanup_empty_parent(&full_path, target, operation)?;
         } else if operation.is_directory(&full_path) && operation.is_directory(&item) {
@@ -569,7 +543,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
                     .read_directory(&full_path)
                     .is_ok_and(|mut entries| entries.next().is_none())
             {
-                info!(path = %full_path.display(), "Removing empty directory");
+                info!(path = ?full_path, "Removing empty directory");
                 operation.remove_item(&full_path)?;
                 Self::cleanup_empty_parent(&full_path, target, operation)?;
             }
@@ -596,10 +570,10 @@ impl<TCommand: CommandOperation> Command<TCommand> {
         let full_path = target.join(item_name);
 
         if operation.is_symlink(&full_path) && operation.read_link(&full_path).is_ok_and(|p| p == item) {
-            debug!(item_path = %item.display(), "Found symlink");
+            debug!(item_path = ?item, "Found symlink");
             args.color_support.print_list_text(&item, &full_path);
         } else if operation.is_directory(&full_path) && operation.is_directory(&item) {
-            debug!(directory_path = %full_path.display(), "Found directory");
+            debug!(directory_path = ?full_path, "Found directory");
             Self::list_directory_entry(&item, &full_path, args, operation)?;
         }
 
@@ -618,7 +592,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
                     .read_directory(parent)
                     .is_ok_and(|mut entries| entries.next().is_none())
             {
-                info!(path = %parent.display(), "Removing empty directory");
+                info!(path = ?parent, "Removing empty directory");
                 operation.remove_item(parent)?;
                 current = parent.parent();
             } else {
