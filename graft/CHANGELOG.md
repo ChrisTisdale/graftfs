@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.7.0 (2026-10-19)
+
+### New Features
+
+ - <csr-id-98ab7093ca4bfdb36fe0c863214c9c313995be0f/> Better support for no regex
+   Adding better support when there is no regex and using combined regex
+   settings.  Now it will performa any regex checks/calls.
+   
+   Fixing an issue where the wrong color was used for move operations.
+ - <csr-id-3d92aeacba8c792a436441ebd8eab342731eb7ba/> Adding external library logging support
+   Adding support for capturing logging messages from external libraries.
+ - <csr-id-9036e143f1f1cb0321471cd4ad2016a4440c56dc/> Allow for missing arguments for printing command
+   Allowing for the printing command to not require arguments.  The default
+   value will be true when no additional argument is provided.
+ - <csr-id-110c16c9e58a871ab27e4b110e5fb631b0401a0f/> Adding conflicted file handling
+   Adding logic to handle conflicted files.  These can have the existing
+   behavior to stop the app, skip the file, adopt the file, or replace it.
+   This allows for configuration in the config file as well as via the
+   command line.
+
+### Bug Fixes
+
+ - <csr-id-5f38d96eff57f0ccc6cb36d1aaaa320fc17b5615/> Fixing missing colors for missing directory
+   Fixing an issue where the missing directory error wasn't using the style
+   setting defined by the application.
+
+### Refactor
+
+ - <csr-id-f4bce2ebbc547f73e68919d3ba28b680dc7f0dc6/> convert logging to structured logging
+   * refactor: convert command logging to structured logging
+   
+   * refactor: convert command logging to structured logging
+   
+   * refactor: convert command_operation logging to structured logging
+   
+   * refactor: convert regex_matcher logging to structured logging
+   
+   * chore: Cleanup of code and updating dependices
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 8 calendar days.
+ - 30 days passed between releases.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 5 unique issues were worked on: [#41](https://github.com/ChrisTisdale/graftfs/issues/41), [#42](https://github.com/ChrisTisdale/graftfs/issues/42), [#43](https://github.com/ChrisTisdale/graftfs/issues/43), [#45](https://github.com/ChrisTisdale/graftfs/issues/45), [#46](https://github.com/ChrisTisdale/graftfs/issues/46)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#41](https://github.com/ChrisTisdale/graftfs/issues/41)**
+    - Adding conflicted file handling ([`110c16c`](https://github.com/ChrisTisdale/graftfs/commit/110c16c9e58a871ab27e4b110e5fb631b0401a0f))
+ * **[#42](https://github.com/ChrisTisdale/graftfs/issues/42)**
+    - Fixing missing colors for missing directory ([`5f38d96`](https://github.com/ChrisTisdale/graftfs/commit/5f38d96eff57f0ccc6cb36d1aaaa320fc17b5615))
+ * **[#43](https://github.com/ChrisTisdale/graftfs/issues/43)**
+    - Allow for missing arguments for printing command ([`9036e14`](https://github.com/ChrisTisdale/graftfs/commit/9036e143f1f1cb0321471cd4ad2016a4440c56dc))
+ * **[#45](https://github.com/ChrisTisdale/graftfs/issues/45)**
+    - Adding external library logging support ([`3d92aea`](https://github.com/ChrisTisdale/graftfs/commit/3d92aeacba8c792a436441ebd8eab342731eb7ba))
+ * **[#46](https://github.com/ChrisTisdale/graftfs/issues/46)**
+    - Convert logging to structured logging ([`f4bce2e`](https://github.com/ChrisTisdale/graftfs/commit/f4bce2ebbc547f73e68919d3ba28b680dc7f0dc6))
+ * **Uncategorized**
+    - Better support for no regex ([`98ab709`](https://github.com/ChrisTisdale/graftfs/commit/98ab7093ca4bfdb36fe0c863214c9c313995be0f))
+</details>
+
 ## v1.6.0 (2026-09-19)
 
 ### New Features
@@ -22,7 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
- - <csr-id-c0a04b827f073465560875707d928f3f476e1e6e/> Addressing issues with override file
  - <csr-id-6c18da30e072d6fc10897ec5fcbbaae481ddd6e4/> Fixing xtask dist
    Fixing issues with xtask not working correctly with all the arguments.
 
@@ -30,9 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 14 calendar days.
+ - 5 commits contributed to the release over the course of 14 calendar days.
  - 19 days passed between releases.
- - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#34](https://github.com/ChrisTisdale/graftfs/issues/34), [#35](https://github.com/ChrisTisdale/graftfs/issues/35), [#36](https://github.com/ChrisTisdale/graftfs/issues/36)
 
 ### Commit Details
@@ -42,12 +109,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#34](https://github.com/ChrisTisdale/graftfs/issues/34)**
-    - Addressing issues with override file ([`c0a04b8`](https://github.com/ChrisTisdale/graftfs/commit/c0a04b827f073465560875707d928f3f476e1e6e))
+    - Fix: Addressing issues with override file ([`c0a04b8`](https://github.com/ChrisTisdale/graftfs/commit/c0a04b827f073465560875707d928f3f476e1e6e))
  * **[#35](https://github.com/ChrisTisdale/graftfs/issues/35)**
     - Adding combined regex support ([`54293a3`](https://github.com/ChrisTisdale/graftfs/commit/54293a348f579af5fbed2eefa494473d7a8641b7))
  * **[#36](https://github.com/ChrisTisdale/graftfs/issues/36)**
     - Adding simulation note ([`66cc76d`](https://github.com/ChrisTisdale/graftfs/commit/66cc76d5a723620d0cfb4337c4b6fce3942f3c17))
  * **Uncategorized**
+    - Release graftfs v1.6.0 ([`069e376`](https://github.com/ChrisTisdale/graftfs/commit/069e376168d03ac6ebdb2adb51396324bd316e69))
     - Fixing xtask dist ([`6c18da3`](https://github.com/ChrisTisdale/graftfs/commit/6c18da30e072d6fc10897ec5fcbbaae481ddd6e4))
 </details>
 
