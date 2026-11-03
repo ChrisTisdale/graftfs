@@ -20,7 +20,8 @@ use crate::commands::ColorSupport;
 use crate::config::config_error::FileReadSnafu;
 use crate::config::logging_config::{ConsoleLoggingStream, LoggingFormat};
 use crate::config::{
-    Config, ConfigError, ConflictStrategy, LinkingStrategy, LoggingError, LoggingLevel, MatchingStrategy, RegexStrategy,
+    Config, ConfigError, ConflictStrategy, LinkingStrategy, LoggingError, LoggingLevel, MatchingStrategy,
+    RegexStrategy, TracingSpan,
 };
 use snafu::ResultExt;
 use std::collections::HashSet;
@@ -157,7 +158,7 @@ impl AppConfiguration {
     ///     use std::env;
     ///
     ///     let configuration = AppConfiguration::load_configuration(None, &env::current_dir()?, HashSet::new(), HashSet::new(), false)?;
-    ///     configuration.setup_logger(None, None, None)?;
+    ///     configuration.setup_logger(None, None, None, None)?;
     ///     Ok(())
     /// }
     /// ```
@@ -166,16 +167,31 @@ impl AppConfiguration {
         override_level: Option<LoggingLevel>,
         override_format: Option<LoggingFormat>,
         override_stream: Option<ConsoleLoggingStream>,
+        override_span: Option<TracingSpan>,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
-        self.config
-            .logging
-            .setup_logger(override_level, override_format, override_stream)
+        self.config.logging.setup_logger(
+            override_level,
+            override_format,
+            override_stream,
+            override_span,
+        )
     }
 
     #[must_use]
-    pub fn color_support(&self) -> ColorSupport {
-        if self.config.color.enabled && supports_color::on(Stream::Stdout).is_some() {
+    pub fn color_support(&self, stream: Option<Stream>) -> ColorSupport {
+        if self.config.color.enabled && supports_color::on(stream.unwrap_or(Stream::Stdout)).is_some() {
             ColorSupport::Colored(Box::new(self.config.color.color_settings()))
+        } else {
+            ColorSupport::None
+        }
+    }
+
+    #[must_use]
+    pub fn take_color_support(&mut self, stream: Option<Stream>) -> ColorSupport {
+        if self.config.color.enabled && supports_color::on(stream.unwrap_or(Stream::Stdout)).is_some() {
+            ColorSupport::Colored(Box::new(
+                std::mem::take(&mut self.config.color).into_color_settings(),
+            ))
         } else {
             ColorSupport::None
         }

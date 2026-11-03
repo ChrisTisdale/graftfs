@@ -17,6 +17,7 @@
  */
 
 use crate::config::version_error::VersionError;
+use crate::config::visitor::StringOrI64Visitor;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::str::FromStr;
@@ -72,29 +73,9 @@ impl Serialize for ConfigFileVersion {
 
 impl<'de> Deserialize<'de> for ConfigFileVersion {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ConfigFileVersionVisitor;
-
-        impl serde::de::Visitor<'_> for ConfigFileVersionVisitor {
-            type Value = ConfigFileVersion;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("1 or v1 or V1 or 2 or v2 or V2")
-            }
-
-            fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(serde::de::Error::custom)
-            }
-
-            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(serde::de::Error::custom)
-            }
-
-            fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(ConfigFileVersionVisitor)
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new(
+            "1 or v1 or V1 or 2 or v2 or V2",
+        ))
     }
 }
 

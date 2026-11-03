@@ -122,6 +122,11 @@ impl From<V1ColorConfig> for ColorConfig {
 
 impl ColorConfig {
     #[must_use]
+    pub fn into_color_settings(self) -> ColorSettings {
+        self.settings.into()
+    }
+
+    #[must_use]
     pub fn color_settings(&self) -> ColorSettings {
         self.settings.clone().into()
     }

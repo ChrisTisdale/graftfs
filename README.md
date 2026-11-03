@@ -170,6 +170,7 @@ format = "compact"
 logging_path = "path/to/logs"
 file = "graft.log"
 rotation = "daily"
+tracing_span = "Enter | Close | Exit"
 max_log_files = 5
 color_support = true
 
@@ -251,6 +252,11 @@ printing_enabled = false
 - `file`: The name of the log file when `logging_path` is configured (default: 'graft.log')
 - `rotation`: The log rotation mode (default: 'daily')
   - Possible values: 'daily', 'hourly'
+- `tracing_span`: The tracing span type to use (default: 'Enter | Close | Exit')
+  - Possible values that can be combined together using '|': 'New', 'Enter', 'Close', 'Exit'
+  - Possible single values: 'None', 'New', 'Enter', 'Close', 'Exit', 'All'
+  - 'All' includes all possible tracing spans
+  - 'None' removes all tracing spans
 - `max_log_files`: The maximum number of log files to keep (default: 5)
 - `color_support`: Whether to enable color support in logs (default: true)
 
@@ -347,6 +353,11 @@ Colors can be specified as either a string (e.g., 'Green') or a hex code (e.g., 
 - `logging_path`: The path to the log file. When no file is provided, the logging will output to sterr (default: None)
 - `rotation`: The log rotation mode (default: Daily)
   - Possible values: 'daily', 'hourly'
+- `tracing_span`: The tracing span type to use (default: 'Enter | Close | Exit')
+  - Possible values that can be combined together using '|': 'New', 'Enter', 'Close', 'Exit'
+  - Possible single values: 'None', 'New', 'Enter', 'Close', 'Exit', 'All'
+  - 'All' includes all possible tracing spans
+  - 'None' removes all tracing spans
 - `max_log_files`: The maximum number of log files to keep (default: None)
 - `color_support`: Whether to enable color support in logs (default: True)
 

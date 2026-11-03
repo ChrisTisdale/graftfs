@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 mod app_configuration;
 mod app_directories;
 mod color_config;
@@ -36,7 +39,9 @@ mod regex_strategy_error;
 mod resolve_error;
 mod rotation_error;
 mod stow_config;
+mod tracing_span_error;
 mod version_error;
+mod visitor;
 
 use crate::config::color_config::V1ColorConfig;
 use crate::config::config_error::{
@@ -48,14 +53,16 @@ pub use color_config::{ColorConfig, ColorSettings};
 pub use config_error::ConfigError;
 pub use config_file_version::ConfigFileVersion;
 pub use conflict_strategy_error::ConflictStrategyError;
+pub use format_error::FormatError;
 pub use ignored::Ignored;
 pub use level_error::LevelError;
 pub use linking_strategy_error::LinkingStrategyError;
-pub use logging_config::{ConsoleLoggingStream, LoggingConfig, LoggingFormat, LoggingLevel};
+pub use logging_config::{ConsoleLoggingStream, LoggingConfig, LoggingFormat, LoggingLevel, TracingSpan};
 pub use logging_error::LoggingError;
 pub use overrides::Overrides;
 pub use regex_strategy_error::RegexStrategyError;
 pub use resolve_error::ResolveError;
+pub use rotation_error::RotationError;
 use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt};
@@ -65,6 +72,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 pub use stow_config::{ConflictStrategy, LinkingStrategy, MatchingStrategy, RegexStrategy, StowConfig};
 use toml::de::DeTable;
+pub use tracing_span_error::TracingSpanError;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct Config {
@@ -540,6 +548,7 @@ mod tests {
             logging_path: Some(PathBuf::from("log_dir")),
             rotation: RotationType::Daily,
             format: LoggingFormat::Pretty,
+            tracing_span: TracingSpan::NONE,
             max_log_files: 10,
             color_support: true,
         }
@@ -565,6 +574,7 @@ mod tests {
         logging_path = "log_dir"
         rotation = "daily"
         format = "pretty"
+        tracing_span = "none"
         max_log_files = 10
         color_support = true
 
@@ -643,6 +653,7 @@ mod tests {
         logging_path = "log_dir"
         rotation = "daily"
         format = "pretty"
+        tracing_span = "none"
         max_log_files = 10
         color_support = true
 
@@ -1052,6 +1063,175 @@ mod tests {
 
         let config: Config = toml::from_str(config_content.as_str()).expect("Failed to parse TOML");
         assert_eq!(config.logging.stream, stream);
+    }
+
+    #[rstest]
+    #[case(ConfigFileVersion::V1, "NONE", TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V1, "none", TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V1, "None", TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V1, "NEW", TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V1, "new", TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V1, "New", TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V1, "ENTER", TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, "enter", TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, "Enter", TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, "EXIT", TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "exit", TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "Exit", TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "CLOSE", TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "close", TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "Close", TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "ALL", TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V1, "all", TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V1, "All", TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V1, "NEW | ENTER | EXIT | CLOSE", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "new | enter | exit | close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "New | Enter | Exit | Close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "NEW | EXIT | CLOSE", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "new | exit | close", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "New | Exit | Close", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "NEW | ENTER | CLOSE", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "new | enter | close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "New | Enter | Close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "NEW | ENTER | EXIT", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "new | enter | exit", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "New | Enter | Exit", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "ENTER | EXIT | CLOSE", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "enter | exit | close", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "Enter | Exit | Close", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "NEW | CLOSE", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "new | close", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "New | Close", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "NEW | ENTER", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, "new | enter", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, "New | Enter", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, "NEW | EXIT", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "new | exit", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "New | Exit", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "ENTER | EXIT", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "enter | exit", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "Enter | Exit", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, "ENTER | CLOSE", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "enter | close", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "Enter | Close", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "EXIT | CLOSE", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "exit | close", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, "Exit | Close", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "NONE", TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V2, "none", TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V2, "None", TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V2, "NEW", TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V2, "new", TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V2, "New", TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V2, "ENTER", TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, "enter", TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, "Enter", TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, "EXIT", TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "exit", TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "Exit", TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "CLOSE", TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "close", TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "Close", TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "ALL", TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V2, "all", TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V2, "All", TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V2, "NEW | ENTER | EXIT | CLOSE", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "new | enter | exit | close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "New | Enter | Exit | Close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "NEW | EXIT | CLOSE", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "new | exit | close", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "New | Exit | Close", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "NEW | ENTER | CLOSE", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "new | enter | close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "New | Enter | Close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "NEW | ENTER | EXIT", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "new | enter | exit", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "New | Enter | Exit", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "ENTER | EXIT | CLOSE", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "enter | exit | close", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "Enter | Exit | Close", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "NEW | CLOSE", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "new | close", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "New | Close", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "NEW | ENTER", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, "new | enter", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, "New | Enter", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, "NEW | EXIT", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "new | exit", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "New | Exit", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "ENTER | EXIT", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "enter | exit", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "Enter | Exit", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, "ENTER | CLOSE", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "enter | close", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "Enter | Close", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "EXIT | CLOSE", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "exit | close", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, "Exit | Close", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    fn toml_ignores_console_tracing_span_case(
+        #[case] version: ConfigFileVersion,
+        #[case] span: &str,
+        #[case] expected_span: TracingSpan,
+    ) {
+        let config_content = format!(
+            r#"
+            version = "{version}"
+
+            [logging]
+            tracing_span = "{span}"
+            "#
+        );
+
+        let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+        assert_eq!(config.logging.tracing_span, expected_span);
+    }
+
+    #[rstest]
+    #[case(ConfigFileVersion::V1, TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V1, TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V1, TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V1, TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V1, TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V1, TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NONE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW)]
+    #[case(ConfigFileVersion::V2, TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::ALL)]
+    #[case(ConfigFileVersion::V2, TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(ConfigFileVersion::V2, TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(ConfigFileVersion::V2, TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(ConfigFileVersion::V2, TracingSpan::ENTER | TracingSpan::CLOSE)]
+    fn toml_tracing_span_can_use_numeric_value(#[case] version: ConfigFileVersion, #[case] tracing_span: TracingSpan) {
+        let config_content = format!(
+            r#"
+            version = "{version}"
+
+            [logging]
+            tracing_span = {}
+            "#,
+            tracing_span.0
+        );
+
+        let config: Config = toml::from_str(&config_content).expect("Failed to parse TOML");
+        assert_eq!(config.logging.tracing_span, tracing_span);
     }
 
     #[rstest]
