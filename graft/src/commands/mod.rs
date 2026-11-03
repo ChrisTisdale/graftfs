@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 mod color_support;
 mod command;
 mod command_build_error;
@@ -35,7 +38,7 @@ pub use command::Command;
 pub use command_build_error::CommandBuildError;
 pub use command_builder::CommandBuilder;
 pub use command_error::CommandError;
-pub use command_operation::{CommandOperation, CommandOperationImpl, DirectoryReader};
+pub use command_operation::{CommandOperation, CommandOperationImpl};
 pub use list_data::ListData;
 pub use restow_data::RestowData;
 pub use stow_data::{StowData, StowOptions};

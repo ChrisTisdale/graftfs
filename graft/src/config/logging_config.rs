@@ -17,17 +17,15 @@
  */
 
 use crate::config::console_logging_stream_error::ConsoleLoggingStreamError;
-use crate::config::format_error::FormatError;
 use crate::config::logging_error::LoggingSnafu;
-use crate::config::rotation_error::RotationError;
-use crate::config::{LevelError, LoggingError};
+use crate::config::visitor::StringOrI64Visitor;
+use crate::config::{FormatError, LevelError, LoggingError, RotationError, TracingSpanError};
 use clap::ValueEnum;
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, de};
+use serde::{Deserialize, Deserializer, Serialize};
 use snafu::ResultExt;
 use std::fmt::Display;
 use std::io::{stderr, stdout};
-use std::ops::BitOr;
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{env, fs};
@@ -107,33 +105,10 @@ impl Serialize for LoggingLevel {
 }
 
 impl<'de> Deserialize<'de> for LoggingLevel {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct LoggingLevelVisitor;
-
-        impl Visitor<'_> for LoggingLevelVisitor {
-            type Value = LoggingLevel;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("off or trace or debug or info or warn or error")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(LoggingLevelVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new(
+            "off or trace or debug or info or warn or error",
+        ))
     }
 }
 
@@ -204,6 +179,246 @@ impl From<LoggingLevel> for log::LevelFilter {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct TracingSpan(pub(crate) u8);
+
+impl TracingSpan {
+    pub const NONE: Self = Self(0b0000);
+    pub const NEW: Self = Self(0b0001);
+    pub const ENTER: Self = Self(0b0010);
+    pub const EXIT: Self = Self(0b0100);
+    pub const CLOSE: Self = Self(0b1000);
+    pub const ALL: Self = Self(0b1111);
+
+    #[must_use]
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    #[must_use]
+    pub fn iter_names(self) -> TracingSpanNamesIterator {
+        TracingSpanNamesIterator(self.into_iter())
+    }
+
+    #[must_use]
+    pub fn iter_all() -> TracingSpanIterator {
+        Self::ALL.into_iter()
+    }
+
+    #[must_use]
+    pub fn iter_all_names() -> TracingSpanNamesIterator {
+        TracingSpanNamesIterator(Self::ALL.into_iter())
+    }
+}
+
+impl Default for TracingSpan {
+    fn default() -> Self {
+        Self::ENTER | Self::CLOSE | Self::EXIT
+    }
+}
+
+impl TryFrom<u8> for TracingSpan {
+    type Error = TracingSpanError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value > Self::ALL.0 {
+            return Err(TracingSpanError::UnsupportedTracingSpan { span: value.into() });
+        }
+
+        Ok(Self(value))
+    }
+}
+
+impl TryFrom<i64> for TracingSpan {
+    type Error = TracingSpanError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        u8::try_from(value)
+            .map_err(|_| TracingSpanError::UnsupportedTracingSpan { span: value })
+            .and_then(Self::try_from)
+    }
+}
+
+impl FromStr for TracingSpan {
+    type Err = TracingSpanError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            value if value.eq_ignore_ascii_case("none") => Ok(Self::NONE),
+            value if value.eq_ignore_ascii_case("all") => Ok(Self::ALL),
+            _ => s
+                .split('|')
+                .map(str::trim)
+                .try_fold(Self::NONE, |c, v| match v {
+                    value if value.eq_ignore_ascii_case("new") => Ok(c | Self::NEW),
+                    value if value.eq_ignore_ascii_case("enter") => Ok(c | Self::ENTER),
+                    value if value.eq_ignore_ascii_case("exit") => Ok(c | Self::EXIT),
+                    value if value.eq_ignore_ascii_case("close") => Ok(c | Self::CLOSE),
+                    _ => Err(TracingSpanError::UnsupportedTracingSpanString {
+                        span: v.to_string(),
+                    }),
+                }),
+        }
+    }
+}
+
+impl Serialize for TracingSpan {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for TracingSpan {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new(
+            "none or new or enter or exit or close or all",
+        ))
+    }
+}
+
+impl BitOr for TracingSpan {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for TracingSpan {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl BitAndAssign for TracingSpan {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl BitAnd for TracingSpan {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl BitXor for TracingSpan {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Self(self.0 ^ rhs.0)
+    }
+}
+
+impl BitXorAssign for TracingSpan {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
+
+impl Not for TracingSpan {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0 & Self::ALL.0)
+    }
+}
+
+pub struct TracingSpanIterator {
+    span: TracingSpan,
+    current: u8,
+}
+
+impl Iterator for TracingSpanIterator {
+    type Item = TracingSpan;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.span == TracingSpan::NONE {
+            return None;
+        }
+
+        loop {
+            if self.current & self.span.0 == 0 {
+                self.current <<= 1;
+                continue;
+            }
+
+            let value = self.current;
+            self.span = TracingSpan(self.span.0 & !value);
+            self.current = value << 1;
+            return Some(TracingSpan(value));
+        }
+    }
+}
+
+pub struct TracingSpanNamesIterator(TracingSpanIterator);
+
+impl Iterator for TracingSpanNamesIterator {
+    type Item = &'static str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().and_then(|v| match v {
+            TracingSpan::NEW => Some("New"),
+            TracingSpan::ENTER => Some("Enter"),
+            TracingSpan::EXIT => Some("Exit"),
+            TracingSpan::CLOSE => Some("Close"),
+            _ => None,
+        })
+    }
+}
+
+impl IntoIterator for TracingSpan {
+    type Item = Self;
+    type IntoIter = TracingSpanIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        TracingSpanIterator {
+            span: self,
+            current: 1,
+        }
+    }
+}
+
+impl From<TracingSpan> for FmtSpan {
+    fn from(value: TracingSpan) -> Self {
+        value.into_iter().fold(Self::NONE, |c, v| match v {
+            TracingSpan::NEW => c | Self::NEW,
+            TracingSpan::ENTER => c | Self::ENTER,
+            TracingSpan::EXIT => c | Self::EXIT,
+            TracingSpan::CLOSE => c | Self::CLOSE,
+            _ => c,
+        })
+    }
+}
+
+impl Display for TracingSpan {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const ALL: u8 = TracingSpan::ALL.0;
+        match self {
+            Self(0) => return f.write_str("None"),
+            Self(ALL) => return f.write_str("All"),
+            _ => {
+                let mut first = true;
+                for name in self.iter_names() {
+                    if !first {
+                        f.write_str(" | ")?;
+                    }
+
+                    first = false;
+                    f.write_str(name)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Default, ValueEnum)]
 #[repr(i64)]
 pub enum ConsoleLoggingStream {
@@ -217,11 +432,12 @@ impl ConsoleLoggingStream {
         self,
         log_level: LoggingLevel,
         logging_format: LoggingFormat,
+        tracing_span: TracingSpan,
         color_support: bool,
     ) -> Result<(), LoggingError> {
         match self {
-            Self::Stdout => logging_format.setup_logger(log_level, stdout, color_support),
-            Self::Stderr => logging_format.setup_logger(log_level, stderr, color_support),
+            Self::Stdout => logging_format.setup_logger(log_level, tracing_span, stdout, color_support),
+            Self::Stderr => logging_format.setup_logger(log_level, tracing_span, stderr, color_support),
         }
     }
 }
@@ -265,33 +481,8 @@ impl Serialize for ConsoleLoggingStream {
 }
 
 impl<'de> Deserialize<'de> for ConsoleLoggingStream {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ConsoleLoggingStreamVisitor;
-
-        impl Visitor<'_> for ConsoleLoggingStreamVisitor {
-            type Value = ConsoleLoggingStream;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("stdout or stderr")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(ConsoleLoggingStreamVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new("stdout or stderr"))
     }
 }
 
@@ -380,33 +571,8 @@ impl Serialize for RotationType {
 }
 
 impl<'de> Deserialize<'de> for RotationType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct RotationTypeVisitor;
-
-        impl Visitor<'_> for RotationTypeVisitor {
-            type Value = RotationType;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("hourly or daily")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(RotationTypeVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new("hourly or daily"))
     }
 }
 
@@ -432,6 +598,7 @@ impl LoggingFormat {
     pub(crate) fn setup_logger<T>(
         self,
         log_level: LoggingLevel,
+        tracing_span: TracingSpan,
         stream: T,
         color_support: bool,
     ) -> Result<(), LoggingError>
@@ -448,23 +615,25 @@ impl LoggingFormat {
 
         match self {
             Self::Compact => {
-                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), log_level)
-                    .with_ansi(color_support)
-                    .with_writer(stream)
-                    .finish();
+                let logger =
+                    Self::setup_subscriber_builder(tracing_subscriber::fmt().compact(), log_level, tracing_span)
+                        .with_ansi(color_support)
+                        .with_writer(stream)
+                        .finish();
 
                 subscriber::set_global_default(logger).context(LoggingSnafu)?;
             }
             Self::Pretty => {
-                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), log_level)
-                    .with_ansi(color_support)
-                    .with_writer(stream)
-                    .finish();
+                let logger =
+                    Self::setup_subscriber_builder(tracing_subscriber::fmt().pretty(), log_level, tracing_span)
+                        .with_ansi(color_support)
+                        .with_writer(stream)
+                        .finish();
 
                 subscriber::set_global_default(logger).context(LoggingSnafu)?;
             }
             Self::Json => {
-                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), log_level)
+                let logger = Self::setup_subscriber_builder(tracing_subscriber::fmt().json(), log_level, tracing_span)
                     .with_ansi(color_support)
                     .with_writer(stream)
                     .finish();
@@ -479,6 +648,7 @@ impl LoggingFormat {
     fn setup_subscriber_builder<TFields, TFormat>(
         subscriber_builder: SubscriberBuilder<TFields, Format<TFormat>>,
         log_level: LoggingLevel,
+        tracing_span: TracingSpan,
     ) -> SubscriberBuilder<TFields, Format<TFormat>>
     where
         TFields: for<'writer> FormatFields<'writer> + 'static,
@@ -488,8 +658,8 @@ impl LoggingFormat {
             .with_max_level(log_level)
             .with_file(true)
             .log_internal_errors(true)
-            .with_span_events(FmtSpan::ENTER.bitor(FmtSpan::CLOSE).bitor(FmtSpan::EXIT))
-            .with_line_number(false)
+            .with_span_events(tracing_span.into())
+            .with_line_number(true)
             .with_thread_ids(true)
             .with_thread_names(true)
             .with_target(true)
@@ -538,33 +708,8 @@ impl Serialize for LoggingFormat {
 }
 
 impl<'de> Deserialize<'de> for LoggingFormat {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct LoggingFormatVisitor;
-
-        impl Visitor<'_> for LoggingFormatVisitor {
-            type Value = LoggingFormat;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("compact or pretty or json")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(LoggingFormatVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new("compact or pretty or json"))
     }
 }
 
@@ -598,6 +743,8 @@ pub struct LoggingConfig {
     pub rotation: RotationType,
     pub file: Option<PathBuf>,
     pub logging_path: Option<PathBuf>,
+    #[serde(default)]
+    pub tracing_span: TracingSpan,
     #[serde(default = "default_max_log_files")]
     pub max_log_files: usize,
     #[serde(default = "default_color_support")]
@@ -629,7 +776,7 @@ impl LoggingConfig {
     ///     use std::env;
     ///
     ///     let config = LoggingConfig::default();
-    ///     config.setup_logger(None, None, None)?;
+    ///     config.setup_logger(None, None, None, None)?;
     ///     Ok(())
     /// }
     /// ```
@@ -638,6 +785,7 @@ impl LoggingConfig {
         override_level: Option<LoggingLevel>,
         override_format: Option<LoggingFormat>,
         override_stream: Option<ConsoleLoggingStream>,
+        override_span: Option<TracingSpan>,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
         let config_level = override_level.unwrap_or(self.level);
         let config_format = override_format.unwrap_or(self.format);
@@ -646,34 +794,40 @@ impl LoggingConfig {
         }
 
         let stream = override_stream.unwrap_or(self.stream);
-        self.file
+        let span = override_span.unwrap_or(self.tracing_span);
+        let guard = self
+            .file
             .as_ref()
             .and_then(|d| self.get_rolling_appender(d))
             .map(tracing_appender::non_blocking)
             .map_or_else(
-                || self.set_console_logger(config_level, config_format, stream),
-                |(appender, guard)| Self::set_file_logger(config_level, config_format, appender, guard),
-            )
+                || self.set_console_logger(config_level, config_format, span, stream),
+                |(appender, guard)| Self::set_file_logger(config_level, config_format, span, appender, guard),
+            )?;
+
+        Ok(guard)
     }
 
     fn set_console_logger(
         &self,
         config_level: LoggingLevel,
         logging_format: LoggingFormat,
+        tracing_span: TracingSpan,
         stream: ConsoleLoggingStream,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
         let color_support = self.color_support && supports_color::on(stream.into()).is_some();
-        stream.setup_logger(config_level, logging_format, color_support)?;
+        stream.setup_logger(config_level, logging_format, tracing_span, color_support)?;
         Ok(None)
     }
 
     fn set_file_logger(
         config_level: LoggingLevel,
         logging_format: LoggingFormat,
+        tracing_span: TracingSpan,
         appender: NonBlocking,
         guard: WorkerGuard,
     ) -> Result<Option<WorkerGuard>, LoggingError> {
-        logging_format.setup_logger(config_level, appender, false)?;
+        logging_format.setup_logger(config_level, tracing_span, appender, false)?;
         Ok(Some(guard))
     }
 
@@ -745,6 +899,7 @@ impl Default for LoggingConfig {
             rotation: RotationType::default(),
             file: None,
             logging_path: None,
+            tracing_span: TracingSpan::default(),
             max_log_files: default_max_log_files(),
             color_support: default_color_support(),
         }
@@ -755,11 +910,12 @@ impl Display for LoggingConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "LoggingConfig {{ level: {}, stream: {}, file: {:?}, logging_path: {:?}, rotation: {}, logging_format: {}, max_log_files: {}, color_support: {} }}",
+            "LoggingConfig {{ level: {}, stream: {}, file: {:?}, logging_path: {:?}, tracing_span: \"{}\", rotation: {}, logging_format: {}, max_log_files: {}, color_support: {} }}",
             self.level,
             self.stream,
             self.file,
             self.logging_path,
+            self.tracing_span,
             self.rotation,
             self.format,
             self.max_log_files,
@@ -913,5 +1069,98 @@ mod tests {
     fn console_logging_stream_from_i64_invalid() {
         let console_logging_stream = ConsoleLoggingStream::try_from(-1);
         assert!(console_logging_stream.is_err());
+    }
+
+    #[rstest]
+    #[case(0b0000, TracingSpan::NONE)]
+    #[case(0b0001, TracingSpan::NEW)]
+    #[case(0b0010, TracingSpan::ENTER)]
+    #[case(0b0100, TracingSpan::EXIT)]
+    #[case(0b1000, TracingSpan::CLOSE)]
+    #[case(0b1111, TracingSpan::ALL)]
+    #[case(0b1110, TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(0b1101, TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(0b1011, TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case(0b0111, TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(0b1001, TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case(0b0011, TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case(0b0110, TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case(0b1100, TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case(0b0101, TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case(0b1010, TracingSpan::ENTER | TracingSpan::CLOSE)]
+    fn tracing_span_from_i64(#[case] span: i64, #[case] expected_span: TracingSpan) {
+        let tracing_span = TracingSpan::try_from(span);
+        assert!(tracing_span.is_ok());
+        let tracing_span = tracing_span.unwrap();
+        assert_eq!(tracing_span, expected_span);
+    }
+
+    #[rstest]
+    #[case("None", TracingSpan::NONE)]
+    #[case("New", TracingSpan::NEW)]
+    #[case("Enter", TracingSpan::ENTER)]
+    #[case("Exit", TracingSpan::EXIT)]
+    #[case("Close", TracingSpan::CLOSE)]
+    #[case("All", TracingSpan::ALL)]
+    #[case("New | Enter | Exit | Close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case("New | Exit | Close", TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case("New | Enter | Close", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case("New | Enter | Exit", TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case("Enter | Exit | Close", TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE)]
+    #[case("New | Close", TracingSpan::NEW | TracingSpan::CLOSE)]
+    #[case("New | Enter", TracingSpan::NEW | TracingSpan::ENTER)]
+    #[case("New | Exit", TracingSpan::NEW | TracingSpan::EXIT)]
+    #[case("Enter | Exit", TracingSpan::ENTER | TracingSpan::EXIT)]
+    #[case("Enter | Close", TracingSpan::ENTER | TracingSpan::CLOSE)]
+    #[case("Exit | Close", TracingSpan::EXIT | TracingSpan::CLOSE)]
+    fn tracing_span_from_str(#[case] span: &str, #[case] expected_span: TracingSpan) {
+        let tracing_span = <TracingSpan as FromStr>::from_str(span);
+        assert!(tracing_span.is_ok());
+        let tracing_span = tracing_span.unwrap();
+        assert_eq!(tracing_span, expected_span);
+    }
+
+    #[rstest]
+    #[case(TracingSpan::NONE, "None")]
+    #[case(TracingSpan::NEW, "New")]
+    #[case(TracingSpan::ENTER, "Enter")]
+    #[case(TracingSpan::EXIT, "Exit")]
+    #[case(TracingSpan::CLOSE, "Close")]
+    #[case(TracingSpan::ALL, "All")]
+    #[case(TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE, "New | Exit | Close")]
+    #[case(TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE, "New | Enter | Close")]
+    #[case(TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT, "New | Enter | Exit")]
+    #[case(TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE, "Enter | Exit | Close")]
+    #[case(TracingSpan::NEW | TracingSpan::CLOSE, "New | Close")]
+    #[case(TracingSpan::NEW | TracingSpan::ENTER, "New | Enter")]
+    #[case(TracingSpan::NEW | TracingSpan::EXIT, "New | Exit")]
+    #[case(TracingSpan::ENTER | TracingSpan::EXIT, "Enter | Exit")]
+    #[case(TracingSpan::ENTER | TracingSpan::CLOSE, "Enter | Close")]
+    #[case(TracingSpan::EXIT | TracingSpan::CLOSE, "Exit | Close")]
+    fn tracing_span_to_string(#[case] span: TracingSpan, #[case] expected_result: &str) {
+        let tracing_span = span.to_string();
+        assert_eq!(tracing_span, expected_result);
+    }
+
+    #[rstest]
+    #[case(TracingSpan::NONE, FmtSpan::NONE)]
+    #[case(TracingSpan::NEW, FmtSpan::NEW)]
+    #[case(TracingSpan::ENTER, FmtSpan::ENTER)]
+    #[case(TracingSpan::EXIT, FmtSpan::EXIT)]
+    #[case(TracingSpan::CLOSE, FmtSpan::CLOSE)]
+    #[case(TracingSpan::ALL, FmtSpan::NEW | FmtSpan::ENTER | FmtSpan::EXIT | FmtSpan::CLOSE)]
+    #[case(TracingSpan::NEW | TracingSpan::EXIT | TracingSpan::CLOSE, FmtSpan::NEW | FmtSpan::EXIT | FmtSpan::CLOSE)]
+    #[case(TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::CLOSE, FmtSpan::NEW | FmtSpan::ENTER | FmtSpan::CLOSE)]
+    #[case(TracingSpan::NEW | TracingSpan::ENTER | TracingSpan::EXIT, FmtSpan::NEW | FmtSpan::ENTER | FmtSpan::EXIT)]
+    #[case(TracingSpan::ENTER | TracingSpan::EXIT | TracingSpan::CLOSE, FmtSpan::ENTER | FmtSpan::EXIT | FmtSpan::CLOSE)]
+    #[case(TracingSpan::NEW | TracingSpan::CLOSE, FmtSpan::NEW | FmtSpan::CLOSE)]
+    #[case(TracingSpan::NEW | TracingSpan::ENTER, FmtSpan::NEW | FmtSpan::ENTER)]
+    #[case(TracingSpan::NEW | TracingSpan::EXIT, FmtSpan::NEW | FmtSpan::EXIT)]
+    #[case(TracingSpan::ENTER | TracingSpan::EXIT, FmtSpan::ENTER | FmtSpan::EXIT)]
+    #[case(TracingSpan::ENTER | TracingSpan::CLOSE, FmtSpan::ENTER | FmtSpan::CLOSE)]
+    #[case(TracingSpan::EXIT | TracingSpan::CLOSE, FmtSpan::EXIT | FmtSpan::CLOSE)]
+    fn tracing_span_into_fmt_span(#[case] span: TracingSpan, #[case] expected_result: FmtSpan) {
+        let fmt_span: FmtSpan = span.into();
+        assert_eq!(fmt_span, expected_result);
     }
 }

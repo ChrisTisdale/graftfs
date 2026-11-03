@@ -26,7 +26,7 @@ use snafu::ResultExt;
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 use std::{env, fs, os, path};
-use tracing::{info, warn};
+use tracing::{info, instrument, warn};
 
 pub trait CommandOperation {
     type Item: Iterator<Item = Result<PathBuf, CommandError>>;
@@ -624,6 +624,7 @@ impl CommandOperation for CommandOperationImpl {
     type Item = DirectoryReader;
 
     #[cfg(unix)]
+    #[instrument(level = "trace")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
         info!(item_path = ?item, target_path = ?target, "Linking");
         match self {
@@ -641,6 +642,7 @@ impl CommandOperation for CommandOperationImpl {
     }
 
     #[cfg(target_os = "windows")]
+    #[instrument(level = "trace")]
     fn link_item(&mut self, item: &Path, target: &Path) -> Result<(), CommandError> {
         info!(item_path = ?item, target_path = ?target, "Linking");
         match self {
@@ -665,6 +667,7 @@ impl CommandOperation for CommandOperationImpl {
     }
 
     #[cfg(unix)]
+    #[instrument(level = "trace")]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
             warn!(entry_path = ?entry_path, "Not a symlink");
@@ -686,6 +689,7 @@ impl CommandOperation for CommandOperationImpl {
     }
 
     #[cfg(target_os = "windows")]
+    #[instrument(level = "trace")]
     fn remove_link(&mut self, entry_path: &Path) -> Result<(), CommandError> {
         if !self.is_symlink(entry_path) {
             warn!(entry_path = ?entry_path, "Not a symlink");
@@ -712,6 +716,7 @@ impl CommandOperation for CommandOperationImpl {
         Ok(())
     }
 
+    #[instrument(level = "trace")]
     fn remove_item(&mut self, target: &Path) -> Result<(), CommandError> {
         match self {
             Self::Default(color) => {
@@ -734,6 +739,7 @@ impl CommandOperation for CommandOperationImpl {
         Ok(())
     }
 
+    #[instrument(level = "trace")]
     fn move_item(&mut self, from: &Path, to: &Path) -> Result<(), CommandError> {
         match self {
             Self::Default(color) => {
@@ -762,6 +768,7 @@ impl CommandOperation for CommandOperationImpl {
         Ok(())
     }
 
+    #[instrument(level = "trace")]
     fn create_directory(&mut self, target: &Path) -> Result<(), CommandError> {
         info!(path = ?target, "Creating directory");
         match self {
@@ -777,6 +784,7 @@ impl CommandOperation for CommandOperationImpl {
         Ok(())
     }
 
+    #[instrument(level = "trace")]
     fn is_directory(&self, target: &Path) -> bool {
         match self {
             Self::Default(_) => fs::metadata(target).is_ok_and(|meta| meta.is_dir()),
@@ -784,10 +792,12 @@ impl CommandOperation for CommandOperationImpl {
         }
     }
 
+    #[instrument(level = "trace")]
     fn is_file(&self, target: &Path) -> bool {
         fs::metadata(target).is_ok_and(|meta| meta.is_file())
     }
 
+    #[instrument(level = "trace")]
     fn is_symlink(&self, target: &Path) -> bool {
         match self {
             Self::Default(_) => fs::symlink_metadata(target).is_ok_and(|meta| meta.is_symlink()),
@@ -795,12 +805,14 @@ impl CommandOperation for CommandOperationImpl {
         }
     }
 
+    #[instrument(level = "trace")]
     fn read_link(&self, target: &Path) -> Result<PathBuf, CommandError> {
         target.canonicalize().with_context(|_| ReadLinkSnafu {
             path: target.display().to_string(),
         })
     }
 
+    #[instrument(level = "trace")]
     fn exists(&self, target: &Path) -> bool {
         match self {
             Self::Default(_) => fs::exists(target).unwrap_or(false),
@@ -808,6 +820,7 @@ impl CommandOperation for CommandOperationImpl {
         }
     }
 
+    #[instrument(level = "trace")]
     fn read_directory(&self, target: &Path) -> Result<DirectoryReader, CommandError> {
         fs::read_dir(target)
             .map(Into::into)

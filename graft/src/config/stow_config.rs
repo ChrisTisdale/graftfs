@@ -17,10 +17,10 @@
  */
 
 use crate::config::matching_strategy_error::MatchingStrategyError;
+use crate::config::visitor::StringOrI64Visitor;
 use crate::config::{ConflictStrategyError, LinkingStrategyError, RegexStrategyError};
 use clap::ValueEnum;
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, de};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Display;
 use std::str::FromStr;
 
@@ -79,33 +79,10 @@ impl Serialize for ConflictStrategy {
 }
 
 impl<'de> Deserialize<'de> for ConflictStrategy {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ConflictStrategyVisitor;
-
-        impl Visitor<'_> for ConflictStrategyVisitor {
-            type Value = ConflictStrategy;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("stop or skip or adopt or replace")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(ConflictStrategyVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new(
+            "stop or skip or adopt or replace",
+        ))
     }
 }
 
@@ -167,33 +144,8 @@ impl Serialize for RegexStrategy {
 }
 
 impl<'de> Deserialize<'de> for RegexStrategy {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct RegexStrategyVisitor;
-
-        impl Visitor<'_> for RegexStrategyVisitor {
-            type Value = RegexStrategy;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("rust or pcre2")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(RegexStrategyVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new("rust or pcre2"))
     }
 }
 
@@ -253,33 +205,8 @@ impl Serialize for MatchingStrategy {
 }
 
 impl<'de> Deserialize<'de> for MatchingStrategy {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct MatchingStrategyVisitor;
-
-        impl Visitor<'_> for MatchingStrategyVisitor {
-            type Value = MatchingStrategy;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("individual or combined")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(MatchingStrategyVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new("individual or combined"))
     }
 }
 
@@ -339,33 +266,8 @@ impl Serialize for LinkingStrategy {
 }
 
 impl<'de> Deserialize<'de> for LinkingStrategy {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct LinkingStrategyVisitor;
-
-        impl Visitor<'_> for LinkingStrategyVisitor {
-            type Value = LinkingStrategy;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("short or full")
-            }
-
-            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                v.try_into().map_err(de::Error::custom)
-            }
-
-            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                v.parse().map_err(de::Error::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-                self.visit_str(&v)
-            }
-        }
-
-        deserializer.deserialize_any(LinkingStrategyVisitor)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(StringOrI64Visitor::<Self>::new("short or full"))
     }
 }
 

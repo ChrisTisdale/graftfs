@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 #[allow(unused)]
 pub mod cli_args;
 #[allow(unused)]

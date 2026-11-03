@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 use clap::builder::Styles;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use graft::CommandLineProcessor;

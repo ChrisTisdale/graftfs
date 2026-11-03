@@ -26,7 +26,7 @@ use crate::cli_errors::{
 use crate::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
 use crate::config::{
     AppConfiguration, Config, ConflictStrategy, ConsoleLoggingStream, DEFAULT_CONFIG_FILE, LinkingStrategy,
-    LoggingFormat, LoggingLevel, MatchingStrategy, RegexStrategy, path_resolver,
+    LoggingFormat, LoggingLevel, MatchingStrategy, RegexStrategy, TracingSpan, path_resolver,
 };
 use crate::executor::Executor;
 use crate::shell::Shell;
@@ -133,6 +133,14 @@ struct LoggingArgs {
         value_name = "STREAM"
     )]
     stream: Option<ConsoleLoggingStream>,
+    #[arg(
+        long = "tracing-span",
+        help = "Set the tracing span. [possible values: none, new, enter, exit, close, all] (values can be combined using '|')",
+        ignore_case = true,
+        value_name = "SPAN",
+        hide = true
+    )]
+    tracing_span: Option<TracingSpan>,
 }
 
 #[derive(Args, Default, Clone, PartialEq, Eq)]
@@ -641,20 +649,13 @@ impl CommandLineProcessor {
     fn create_command(
         simulated: bool,
         printing: bool,
-        app_config: &AppConfiguration,
+        color_support: ColorSupport,
     ) -> CommandBuilder<CommandOperationImpl> {
+        let builder = CommandBuilder::<CommandOperationImpl>::new();
         if simulated {
-            CommandBuilder::<CommandOperationImpl>::new().simulate(app_config.color_support())
+            builder.simulate(color_support)
         } else {
-            CommandBuilder::<CommandOperationImpl>::new().command(Self::get_color_support(printing, app_config))
-        }
-    }
-
-    fn get_color_support(printing: bool, app_config: &AppConfiguration) -> Option<ColorSupport> {
-        if printing {
-            Some(app_config.color_support())
-        } else {
-            None
+            builder.command(if printing { Some(color_support) } else { None })
         }
     }
 
@@ -733,7 +734,7 @@ impl CommandLineProcessor {
     fn stow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let directory = Self::get_source(&stow_args.directory)?;
         let target = Self::get_target(&stow_args.directory)?;
-        let app_config = Self::load_app_config(
+        let mut app_config = Self::load_app_config(
             &directory,
             &stow_args.global,
             stow_args.ignored.into_iter().collect(),
@@ -745,6 +746,7 @@ impl CommandLineProcessor {
                 stow_args.logging.level,
                 stow_args.logging.format,
                 stow_args.logging.stream,
+                stow_args.logging.tracing_span,
             )
             .context(LoggingSnafu)?;
 
@@ -766,7 +768,8 @@ impl CommandLineProcessor {
 
         let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
-        let command = Self::create_command(stow_args.simulate, printing, &app_config)
+        let color_settings = app_config.take_color_support(None);
+        let command = Self::create_command(stow_args.simulate, printing, color_settings)
             .stow()
             .with_dot_file_prefix(stow_args.directory.dotfiles)
             .with_ignored(app_config.ignored)
@@ -787,7 +790,7 @@ impl CommandLineProcessor {
     fn delete(unstow_args: UnstowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let directory = Self::get_source(&unstow_args.directory)?;
         let target = Self::get_target(&unstow_args.directory)?;
-        let app_config = Self::load_app_config(
+        let mut app_config = Self::load_app_config(
             &directory,
             &unstow_args.global,
             HashSet::new(),
@@ -799,6 +802,7 @@ impl CommandLineProcessor {
                 unstow_args.logging.level,
                 unstow_args.logging.format,
                 unstow_args.logging.stream,
+                unstow_args.logging.tracing_span,
             )
             .context(LoggingSnafu)?;
 
@@ -806,7 +810,8 @@ impl CommandLineProcessor {
             .printing
             .unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &unstow_args.directory.packages)?;
-        let command = Self::create_command(unstow_args.simulate, printing, &app_config)
+        let color_settings = app_config.take_color_support(None);
+        let command = Self::create_command(unstow_args.simulate, printing, color_settings)
             .unstow()
             .with_dot_file_prefix(unstow_args.directory.dotfiles)
             .with_target(target)
@@ -820,7 +825,7 @@ impl CommandLineProcessor {
     fn restow(stow_args: StowArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let directory = Self::get_source(&stow_args.directory)?;
         let target = Self::get_target(&stow_args.directory)?;
-        let app_config = Self::load_app_config(
+        let mut app_config = Self::load_app_config(
             &directory,
             &stow_args.global,
             stow_args.ignored.into_iter().collect(),
@@ -832,6 +837,7 @@ impl CommandLineProcessor {
                 stow_args.logging.level,
                 stow_args.logging.format,
                 stow_args.logging.stream,
+                stow_args.logging.tracing_span,
             )
             .context(LoggingSnafu)?;
 
@@ -853,7 +859,8 @@ impl CommandLineProcessor {
 
         let printing = stow_args.printing.unwrap_or_else(|| app_config.printing());
         let packages = Self::get_package_directories(&directory, &stow_args.directory.packages)?;
-        let command = Self::create_command(stow_args.simulate, printing, &app_config)
+        let color_settings = app_config.take_color_support(None);
+        let command = Self::create_command(stow_args.simulate, printing, color_settings)
             .restow()
             .with_dot_file_prefix(stow_args.directory.dotfiles)
             .with_ignored(app_config.ignored)
@@ -874,7 +881,7 @@ impl CommandLineProcessor {
     fn list(list_args: ListArgs) -> Result<CliArgs<CommandOperationImpl>, CliError> {
         let directory = Self::get_source(&list_args.directory)?;
         let target = Self::get_target(&list_args.directory)?;
-        let app_config = Self::load_app_config(
+        let mut app_config = Self::load_app_config(
             &directory,
             &list_args.global,
             HashSet::new(),
@@ -886,15 +893,17 @@ impl CommandLineProcessor {
                 list_args.logging.level,
                 list_args.logging.format,
                 list_args.logging.stream,
+                list_args.logging.tracing_span,
             )
             .context(LoggingSnafu)?;
 
         let packages = Self::get_package_directories(&directory, &list_args.directory.packages)?;
+        let color_settings = app_config.take_color_support(None);
         let command = CommandBuilder::new()
             .list()
             .with_target(target)
             .with_packages(packages)
-            .with_color_support(app_config.color_support())
+            .with_color_support(color_settings)
             .with_dot_file_prefix(list_args.directory.dotfiles)
             .build()
             .with_context(|_| CommandBuildSnafu { command: "List" })?;
