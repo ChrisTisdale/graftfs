@@ -252,7 +252,6 @@ impl<TCommand: CommandOperation> Command<TCommand> {
 
     fn is_ignored(entry_path: &Path, filter: &StowFilter) -> bool {
         trace!(entry_path = ?entry_path, "Checking if item should be ignored");
-
         Self::path_matches_filter("Ignored", entry_path, &filter.ignored)
     }
 
@@ -322,7 +321,7 @@ impl<TCommand: CommandOperation> Command<TCommand> {
             });
         }
 
-        let no_folding = operation.is_directory(item) && package.data.options.no_folding;
+        let no_folding = package.data.options.no_folding && operation.is_directory(item);
         let file_name = Self::get_item_name(item, package.data.options.dot_file_prefix.as_ref())?;
         let full_path = target.join(file_name);
         debug!(entry_path = ?item, no_folding = no_folding, "Trying to stow directory entry");
