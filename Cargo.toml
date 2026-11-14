@@ -6,9 +6,8 @@ members = [
 ]
 
 [workspace.package]
-authors = ["Chris Tisdale"]
 readme = "README.md"
-rust-version = "1.99.0"
+rust-version = "1.100.0"
 repository = "https://github.com/ChrisTisdale/graftfs"
 license = "GPL-3.0-or-later"
 edition = "2024"
