@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.7.1 (2026-11-21)
+
+### Chore
+
+ - <csr-id-bca27928ef2dc94ac57c0c387bb2ee1c26389612/> Don't Box Color Support
+   Don't box the color support on the most common path.
+ - <csr-id-8610746b14ffe55d16fa7bb9890c01ef32892f15/> Updating dependices
+   Updating dependices to the lastest and minor cleanup for performance.
+
+### New Features
+
+ - <csr-id-78abd54ee782eab611ec792b19fdc4ca6b2b1bae/> Cleaning up configuration and tracing
+   Cleaning up the configuration to avoid allocations where not needed.
+   Added new configurations for adding tracing behavior.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 18 calendar days.
+ - 33 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#48](https://github.com/ChrisTisdale/graftfs/issues/48)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#48](https://github.com/ChrisTisdale/graftfs/issues/48)**
+    - Cleaning up configuration and tracing ([`78abd54`](https://github.com/ChrisTisdale/graftfs/commit/78abd54ee782eab611ec792b19fdc4ca6b2b1bae))
+ * **Uncategorized**
+    - Don't Box Color Support ([`bca2792`](https://github.com/ChrisTisdale/graftfs/commit/bca27928ef2dc94ac57c0c387bb2ee1c26389612))
+    - Updating dependices ([`8610746`](https://github.com/ChrisTisdale/graftfs/commit/8610746b14ffe55d16fa7bb9890c01ef32892f15))
+</details>
+
 ## v1.7.0 (2026-10-19)
 
 ### New Features
@@ -48,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 8 calendar days.
+ - 7 commits contributed to the release over the course of 8 calendar days.
  - 30 days passed between releases.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#41](https://github.com/ChrisTisdale/graftfs/issues/41), [#42](https://github.com/ChrisTisdale/graftfs/issues/42), [#43](https://github.com/ChrisTisdale/graftfs/issues/43), [#45](https://github.com/ChrisTisdale/graftfs/issues/45), [#46](https://github.com/ChrisTisdale/graftfs/issues/46)
@@ -70,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#46](https://github.com/ChrisTisdale/graftfs/issues/46)**
     - Convert logging to structured logging ([`f4bce2e`](https://github.com/ChrisTisdale/graftfs/commit/f4bce2ebbc547f73e68919d3ba28b680dc7f0dc6))
  * **Uncategorized**
+    - Release graftfs v1.7.0 ([`a43bb40`](https://github.com/ChrisTisdale/graftfs/commit/a43bb40e001a0e60cda9005639880dd773dbfd15))
     - Better support for no regex ([`98ab709`](https://github.com/ChrisTisdale/graftfs/commit/98ab7093ca4bfdb36fe0c863214c9c313995be0f))
 </details>
 
