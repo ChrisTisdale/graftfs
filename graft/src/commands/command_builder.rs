@@ -126,7 +126,7 @@ impl<T: CommandOperation + Default> CommandBuilder<T> {
         CommandBuilder::<CommandOperationImpl> {
             target: self.target,
             packages: self.packages,
-            operation: CommandOperationImpl::Default(color.map(Box::new)),
+            operation: CommandOperationImpl::Default(color),
             dot_file_prefix: self.dot_file_prefix,
         }
     }

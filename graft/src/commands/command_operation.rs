@@ -29,6 +29,7 @@ use std::{env, fs, os, path};
 use tracing::{info, warn};
 
 pub trait CommandOperation {
+    /// An iterator yielding results of path operations.
     type Item: Iterator<Item = Result<PathBuf, CommandError>>;
 
     /// Creates a symbolic link from the `source` path to the `target` path.
@@ -385,7 +386,7 @@ pub trait CommandOperation {
 /// - `Simulated`: Represents a simulated implementation type, often used for testing or scenarios where the operation doesn't interact with a real system.
 #[derive(Debug, PartialEq, Eq)]
 pub enum CommandOperationImpl {
-    Default(Option<Box<ColorSupport>>),
+    Default(Option<ColorSupport>),
     Simulated(Box<SimulatedData>),
 }
 

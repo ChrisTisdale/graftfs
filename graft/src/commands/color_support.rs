@@ -47,7 +47,7 @@ pub trait ColorPrinter {
     fn print_simulation_text(&self);
 }
 
-impl<T: ColorPrinter> ColorPrinter for Option<Box<T>> {
+impl<T: ColorPrinter> ColorPrinter for Option<T> {
     fn print_link_text(&self, item: &Path, target: &Path) {
         if let Some(support) = self {
             support.print_link_text(item, target);

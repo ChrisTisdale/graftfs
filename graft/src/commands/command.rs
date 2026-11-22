@@ -32,14 +32,11 @@ use tracing::{debug, error, info, instrument, trace, warn};
 /// Represents a structure that encapsulates data and an associated operation related to command processing.
 ///
 /// This generic structure provides a way to associate a dataset (`TData`) with a specific operation
-/// (`TOperation`) that processes an iterator of results (`TIter`). The `PhantomData` marker is used
-/// to indicate that this structure logically depends on `TIter` without actually owning any instances of it.
+/// (`TOperation`) that processes an iterator of results.
 ///
 /// # Type Parameters
 /// - `TData`: The type of the data associated with the command.
-/// - `TIter`: An iterator type that yields `Result<PathBuf, CommandError>` items. This represents
-///   the source of paths and potential errors during command execution.
-/// - `TOperation`: A type that implements the `CommandOperation<TIter>` trait. This defines the
+/// - `TOperation`: A type that implements the `CommandOperation` trait. This defines the
 ///   operation associated with processing the command's data.
 pub struct CommandData<TData, TOperation: CommandOperation> {
     pub(crate) data: TData,
@@ -54,8 +51,6 @@ pub struct CommandData<TData, TOperation: CommandOperation> {
 ///
 /// # Type Parameters
 ///
-/// - `TIter`: A type implementing the `Iterator` trait, where each item is a `Result<PathBuf, CommandError>`.
-///   This parameter defines the iterator responsible for providing results of path operations.
 /// - `TCommand`: A type implementing the `CommandOperation` trait, representing the command behavior.
 ///
 /// # Variants

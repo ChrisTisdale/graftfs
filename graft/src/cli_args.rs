@@ -28,7 +28,7 @@ pub struct CliArgs<T: CommandOperation> {
 
 impl<T: CommandOperation> Display for CliArgs<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CliArgs {{ excutor: {} }}", self.executor)
+        write!(f, "CliArgs {{ executor: {} }}", self.executor)
     }
 }
 
