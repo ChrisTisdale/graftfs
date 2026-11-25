@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.7.2 (2026-11-25)
+
+### Chore
+
+ - <csr-id-c7f6213ea93d5f1916bdd58a0289b7e8f4f9dbf8/> Updating dependices
+   Updating dependices to the lastest
+
+### Bug Fixes
+
+ - <csr-id-4db4321aa81e7795132f1414295b84829b4f9514/> Fixing config file write issues
+   Addressing issues where a config file export to the same file being
+   loaded would cause unexecpted results
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release over the course of 1 calendar day.
+ - 4 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Fixing config file write issues ([`4db4321`](https://github.com/ChrisTisdale/graftfs/commit/4db4321aa81e7795132f1414295b84829b4f9514))
+    - Updating dependices ([`c7f6213`](https://github.com/ChrisTisdale/graftfs/commit/c7f6213ea93d5f1916bdd58a0289b7e8f4f9dbf8))
+</details>
+
 ## v1.7.1 (2026-11-21)
 
 ### Chore
@@ -24,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 18 calendar days.
+ - 4 commits contributed to the release over the course of 18 calendar days.
  - 33 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#48](https://github.com/ChrisTisdale/graftfs/issues/48)
@@ -38,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#48](https://github.com/ChrisTisdale/graftfs/issues/48)**
     - Cleaning up configuration and tracing ([`78abd54`](https://github.com/ChrisTisdale/graftfs/commit/78abd54ee782eab611ec792b19fdc4ca6b2b1bae))
  * **Uncategorized**
+    - Release graftfs v1.7.1 ([`c8e37da`](https://github.com/ChrisTisdale/graftfs/commit/c8e37da2146f508b9ceab23f890d8176acaeac92))
     - Don't Box Color Support ([`bca2792`](https://github.com/ChrisTisdale/graftfs/commit/bca27928ef2dc94ac57c0c387bb2ee1c26389612))
     - Updating dependices ([`8610746`](https://github.com/ChrisTisdale/graftfs/commit/8610746b14ffe55d16fa7bb9890c01ef32892f15))
 </details>
@@ -130,6 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-6c18da30e072d6fc10897ec5fcbbaae481ddd6e4/> Fixing xtask dist
    Fixing issues with xtask not working correctly with all the arguments.
+ - <csr-id-c0a04b827f073465560875707d928f3f476e1e6e/> Addressing issues with override file
 
 ### Commit Statistics
 
@@ -137,7 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - 5 commits contributed to the release over the course of 14 calendar days.
  - 19 days passed between releases.
- - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#34](https://github.com/ChrisTisdale/graftfs/issues/34), [#35](https://github.com/ChrisTisdale/graftfs/issues/35), [#36](https://github.com/ChrisTisdale/graftfs/issues/36)
 
 ### Commit Details
@@ -147,7 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#34](https://github.com/ChrisTisdale/graftfs/issues/34)**
-    - Fix: Addressing issues with override file ([`c0a04b8`](https://github.com/ChrisTisdale/graftfs/commit/c0a04b827f073465560875707d928f3f476e1e6e))
+    - Addressing issues with override file ([`c0a04b8`](https://github.com/ChrisTisdale/graftfs/commit/c0a04b827f073465560875707d928f3f476e1e6e))
  * **[#35](https://github.com/ChrisTisdale/graftfs/issues/35)**
     - Adding combined regex support ([`54293a3`](https://github.com/ChrisTisdale/graftfs/commit/54293a348f579af5fbed2eefa494473d7a8641b7))
  * **[#36](https://github.com/ChrisTisdale/graftfs/issues/36)**
