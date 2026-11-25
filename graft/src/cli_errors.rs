@@ -79,4 +79,9 @@ pub enum CliError {
     },
     #[snafu(display("Failed to upgrade configuration"))]
     UpgradingConfigError { source: crate::config::ConfigError },
+    #[snafu(display("Failed to write configuration to {file}"))]
+    ConfigFileWriteError {
+        file: String,
+        source: std::io::Error,
+    },
 }

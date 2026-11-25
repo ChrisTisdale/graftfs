@@ -19,9 +19,9 @@
 use crate::CliError;
 use crate::cli_args::CliArgs;
 use crate::cli_errors::{
-    CommandBuildSnafu, CommandLineParsingSnafu, ConfigWriteSnafu, FileCreationSnafu, FolderCreationSnafu,
-    GenerateCompletionsSnafu, InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu, OutputFileCreationSnafu,
-    ResolveSnafu, UpgradingConfigSnafu,
+    CommandBuildSnafu, CommandLineParsingSnafu, ConfigFileWriteSnafu, ConfigWriteSnafu, FileCreationSnafu,
+    FolderCreationSnafu, GenerateCompletionsSnafu, InvalidConfigFileSnafu, InvalidPathSnafu, LoggingSnafu,
+    OutputFileCreationSnafu, ResolveSnafu, UpgradingConfigSnafu,
 };
 use crate::commands::{ColorSupport, CommandBuilder, CommandOperationImpl};
 use crate::config::{
@@ -498,6 +498,19 @@ impl ConfigPrinter {
     ///   - Fails to write the configuration to standard output.
     pub fn print_config(&self) -> Result<(), CliError> {
         if let Some(output) = &self.output {
+            let output = path_resolver::resolve_home_path(output).with_context(|_| ResolveSnafu {
+                file: output.display().to_string(),
+            })?;
+
+            let config_file = match &self.config_file {
+                Some(config_file) => Some(
+                    path_resolver::resolve_path(config_file).with_context(|_| ResolveSnafu {
+                        file: config_file.display().to_string(),
+                    })?,
+                ),
+                None => None,
+            };
+
             let folder = output.parent();
             if let Some(folder) = folder
                 && !fs::exists(folder).unwrap_or(false)
@@ -507,16 +520,20 @@ impl ConfigPrinter {
                 })?;
             }
 
-            let mut file = File::create(output).with_context(|_| FileCreationSnafu {
+            let mut buffer = Vec::new();
+            Config::print_config(config_file.as_deref(), self.upgrade, &mut buffer).context(ConfigWriteSnafu)?;
+            let mut file = File::create(&output).with_context(|_| FileCreationSnafu {
                 file: output.display().to_string(),
             })?;
 
-            Config::print_config(self.config_file.as_deref(), self.upgrade, &mut file)
+            file.write_all(&buffer)
+                .with_context(|_| ConfigFileWriteSnafu {
+                    file: output.display().to_string(),
+                })
         } else {
             let mut stdout = std::io::stdout();
-            Config::print_config(self.config_file.as_deref(), self.upgrade, &mut stdout)
+            Config::print_config(self.config_file.as_deref(), self.upgrade, &mut stdout).context(ConfigWriteSnafu)
         }
-        .context(ConfigWriteSnafu)
     }
 }
 
